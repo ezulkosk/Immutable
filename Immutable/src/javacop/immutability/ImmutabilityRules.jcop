@@ -3,11 +3,13 @@
  * "Freedom Before Commitment" by Alexander J. Summers and 
  * Peter Muller. 
  * 
+ * Implemented in conjunction with an immutable type system.
+ * 
  * Course Project: ECE750 Spring 2013
  * Author: Ed Zulkoski
  */
-package javacop.initrules;
-flowfact InitFlowFacts;
+package javacop.immutability;
+flowfact ImmutabilityFlowFacts;
 
 /*---------------------------------------*/
 /* Define the initialization annotations */
@@ -21,7 +23,7 @@ declare unclassified(Symbol s){
 	require(s.hasAnnotation("javacop.annotations.Unclassified"));
 }
 
-//we default to Committed
+// Default to Committed
 declare committed(Symbol s){
 	require(explicitlyCommitted(s) || (!free(s) && !unclassified(s)));
 }
@@ -46,7 +48,7 @@ declare mutable(Symbol s){
 	require(s.hasAnnotation("javacop.annotations.Mutable"));
 }
 
-//For now, default to immutable
+// Default to immutable
 declare immutable(Symbol s){
 	require(s.hasAnnotation("javacop.annotations.Immutable")
 			|| !mutable(s));
@@ -56,10 +58,68 @@ declare immutable(JCTree t){
 	require(t.holdsSymbol && immutable(t.getSymbol));
 }
 
-/*-----------------------*/
+/*----------------*/
+/* Subtype Checks */
+/*----------------*/
+
+//Ensures that:
+// 1) A mutable cannot be assigned to an immutable, or vice-versa.
+// 2) The initialization types conform (e.g. a free object cannot be stored in a committed object).
+rule subtypeCheck(r <<: l){
+	require(mutability_helper(l, r)):warning(r,
+			"Cannot assign mutable to immutable or vice versa: " + l + " <- " + r);
+	require(ImmutabilityFlowFacts ff; ff <- r#getFlowFacts(ImmutabilityFlowFacts#class)){ //this line is only used for error messages
+		require(init_helper(l,r)):warning(r,
+				"Incompatible init types: " + l + " <- " + r);
+	}
+}
+
+
+/*------------------*/
+/* Mutability Rules */
+/*------------------*/
+
+declare mutability_helper(Symbol l, JCTree r){
+	require(ImmutabilityFlowFacts ff; ff <- r#getFlowFacts(ImmutabilityFlowFacts#class)){
+		require(ff#mutabilityCheck(ff#immType(l, env), ff#immType(r, env)));
+	}
+}
+
+// I'm unsure if this is ever called. Might be able to remove.
+declare mutability_helper(JCTree l, JCTree r){
+	require(ImmutabilityFlowFacts ff; ff <- r#getFlowFacts(ImmutabilityFlowFacts#class)){
+		require(ff#mutabilityCheck(ff#immType(l, env), ff#immType(r, env)));
+	}
+}
+
+rule no_mutables_in_immutable_constructor(r <<: l){
+	where(r instanceof JCNewClass){
+		require(ImmutabilityFlowFacts ff; ff <- r#getFlowFacts(ImmutabilityFlowFacts#class)){
+			require(ff#constructorCheck(ff#immType(l, env), ff#checkConstructorArgs(r, env))):warning(r, 
+					"Passing a mutable into an immutable object constructor.");
+		}
+	}	
+}
+
+/*----------------------*/
+/* Initialization Rules */
+/*----------------------*/
+
+declare init_helper(Symbol l, JCTree r){
+	require(ImmutabilityFlowFacts ff; ff <- r#getFlowFacts(ImmutabilityFlowFacts#class)){
+		require(ff#initCheck(ff#initType(l, env), ff#initType(r, env)));
+	}
+}
+
+// I'm unsure if this is ever called. Might be able to remove.
+declare init_helper(JCTree l, JCTree r){
+	require(ImmutabilityFlowFacts ff; ff <- r#getFlowFacts(ImmutabilityFlowFacts#class)){
+		require(ff#initCheck(ff#initType(l, env), ff#initType(r, env)));
+	}
+}
 
 declare definitelyAssignedVariable(JCAssign a){
-	require(InitFlowFacts ff ; ff <- a#getFlowFacts(InitFlowFacts#class)){
+	require(ImmutabilityFlowFacts ff ; ff <- a#getFlowFacts(ImmutabilityFlowFacts#class)){
 		require(ff#hasBeenInitialized(a.lhs));
 	}
 }
@@ -67,7 +127,7 @@ declare definitelyAssignedVariable(JCAssign a){
 
 rule assign(JCAssign a){
 	where(a.lhs.holdsSymbol && committed(a.lhs.getSymbol)){
-		require(committed(a.rhs) /*definitelyAssignedVariable(a)*/): warning(a, "Left committed but defAssVar failed.");
+		require(committed(a.rhs) /*definitelyAssignedVariable(a)*/): warning(a, "Left committed but right uncommitted.");
 	}
 }
 
@@ -78,25 +138,7 @@ rule tvarass(JCAssign a){
 	require(1 < 2);
 }
 
-/*
-rule test2(JCAssign a){
-	require(InitFlowFacts ff ; ff <- a#getFlowFacts(InitFlowFacts#class)){
-		where(ff#testMeth(a.lhs) && a.lhs.holdsSymbol){
-			require(JCTree l, Symbol s; l <- a.lhs && s <- a.lhs.getSymbol){
-				where(l instanceof JCFieldAccess 
-						//the implicit-this case
-						|| (l instanceof JCIdent && !(s.isLocal || s.isStatic))){
-					require(/*!committed(l) false):warning(a, "TEST2");
-				}
-			}
-		}
-	}
-}
-*/
 
-rule test(JCTree a){
-	require(a.holdsSymbol): warning(a,"Never hit.");
-}
 
 /*--------------------*/
 /* Sanity Constraints */	
@@ -147,13 +189,23 @@ declare noInitAnnotation(Symbol s){
 
 rule noInitAnnotation(JCMethodDecl md){
 	where(md.holdsSymbol && md.getSymbol.isConstructor){
-		require(noInitAnnotation(md.getSymbol)):warning(md, "Constructors should not have initialization modifiers.");
+		require(noInitAnnotation(md.getSymbol)):warning(md, "Constructors should not have initialization annotations.");
 	}
 }
 
 //A field should not have an initialization modifier
 rule noInitAnnotation(JCVariableDecl vd){
 	where(vd.holdsSymbol && !vd.getSymbol.isStatic && !vd.getSymbol.isLocal){
-		require(noInitAnnotation(vd.getSymbol)):warning(vd, "Fields should not have initialization modifiers.");
+		require(noInitAnnotation(vd.getSymbol)):warning(vd, "Fields should not have initialization annotations.");
 	}
 }
+
+/*-----------------*/
+/* TODO Extensions */
+/*-----------------*/
+
+//currently don't allow static fields
+rule noStaticFields(JCVariableDecl vd){
+	require(!vd.sym.isStatic):warning(vd, "Static fields are currently not allowed.");
+}
+

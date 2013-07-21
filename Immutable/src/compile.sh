@@ -1,7 +1,9 @@
 #!/bin/bash
-JCOPJAR=/home/ezulkosk/workspace/Immutable/lib/JavaCop.jar
+JCOPJAR=../lib/JavaCop.jar 
 export JCOPJAR
 
-jcopc javacop/initrules/InitRules
-jar cf InitRules.jar javacop
-javacop -jcp InitRules.jar javacop.initrules.InitRules test/List.java
+jcopc javacop/immutability/ImmutabilityRules
+jar cf ImmutabilityRules.jar javacop
+#javacop -jcp ImmutabilityRules.jar javacop.immutability.ImmutabilityRules test/List.java
+javacop -jcp ImmutabilityRules.jar javacop.immutability.ImmutabilityRules test/A.java
+#javacop -jcp ImmutabilityRules.jar javacop.immutability.ImmutabilityRules java/lang/String.java

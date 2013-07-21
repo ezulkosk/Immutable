@@ -3,26 +3,40 @@ package test;
 
 import javacop.annotations.Committed;
 import javacop.annotations.Free;
-import javacop.annotations.Nonnull;
-import javacop.annotations.Mutable;
 import javacop.annotations.Immutable;
+import javacop.annotations.Mutable;
+import javacop.annotations.Nonnull;
+
+import org.omg.CORBA.Environment;
 
 public class List {
 
     Node root = new EmptyNode();
     @Mutable @Immutable @Free @Committed int field;
-    int b;
+    @Immutable List testlist;
+    int b = 2;
+    int e = this.b;
     //Node r = this.root;
-    public void insert(int t) {
+    @Free public void insert(int t) {
 	int a = 1;
 	
-	int c = b;
+	
+	int c = this.b;
 	@Free int d = 0;
 	int e = d;
 	field = 2;
 	Object o = new Object();
 	
 	root = root.insert(t);
+    }
+    
+    public void testListAsParam(@Free List l){
+    	Node n = l.root;
+    	Object o = getClass();
+    }
+    
+    public List(){
+    	e = b;
     }
 }
 
@@ -49,7 +63,7 @@ class DataNode implements Node {
 
 class EmptyNode implements Node {
 
-    public Node insert(int t) {
+    @Free public Node insert(@Free int t) {
 	return new DataNode(t, this);
     }
 
