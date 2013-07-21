@@ -1,0 +1,586 @@
+package javacop.immutability;
+
+import constrainer.*;
+import com.sun.tools.javac.code.*;
+import com.sun.tools.javac.code.Symbol.*;
+import com.sun.tools.javac.code.Type.*;
+import com.sun.tools.javac.code.Flags;
+import static com.sun.tools.javac.code.Flags.*;
+import com.sun.tools.javac.code.Kinds;
+import static com.sun.tools.javac.code.Kinds.*;
+import com.sun.tools.javac.comp.*;
+import com.sun.tools.javac.tree.*;
+import com.sun.tools.javac.tree.JCTree.*;
+import com.sun.tools.javac.util.*;
+import com.sun.tools.javac.util.Name.*;
+import com.sun.tools.javac.code.Attribute.*;
+public class ImmutabilityRules extends AbstractConstraints{
+
+public ImmutabilityRules(Log log, Table names, Symtab syms, Types types){
+    super(log,names,syms,types);
+}
+
+//Generated Code
+
+public List<? extends FlowFacts> getDataFlowAnalyses(){
+	return List.of(new ImmutabilityFlowFacts(this));
+}
+
+
+
+public boolean hasproperty_noInitAnnotation_1(final Env<AttrContext> env, final Object s_){
+  if(!(s_ instanceof Symbol)){return false;}
+    final Symbol s = (Symbol) s_;
+    {
+    if((((!hasproperty_free(env, s)) && (!hasproperty_explicitlyCommitted(env, s))) && (!hasproperty_unclassified(env, s)))){
+    }
+    else{
+        return false;
+    }
+    }
+    return true;
+}
+
+public boolean hasproperty_noInitAnnotation(final Env<AttrContext> env, final Object _a0){
+    return hasproperty_noInitAnnotation_1(env, _a0);
+}
+
+/*----------------------------------------------*/
+
+
+public boolean hasproperty_committed_1(final Env<AttrContext> env, final Object s_){
+  if(!(s_ instanceof Symbol)){return false;}
+    final Symbol s = (Symbol) s_;
+    {
+    if((hasproperty_explicitlyCommitted(env, s) || ((!hasproperty_free(env, s)) && (!hasproperty_unclassified(env, s))))){
+    }
+    else{
+        return false;
+    }
+    }
+    return true;
+}
+
+public boolean hasproperty_committed_2(final Env<AttrContext> env, final Object t_){
+  if(!(t_ instanceof JCTree)){return false;}
+    final JCTree t = (JCTree) t_;
+    {
+    if((holdsSymbol(t) && hasproperty_committed(env, getSymbol(t)))){
+    }
+    else{
+        return false;
+    }
+    }
+    return true;
+}
+
+public boolean hasproperty_committed(final Env<AttrContext> env, final Object _a0){
+    return hasproperty_committed_1(env, _a0) || hasproperty_committed_2(env, _a0);
+}
+
+/*----------------------------------------------*/
+
+
+public boolean hasproperty_mutability_helper_1(final Env<AttrContext> env, final Object l_, final Object r_){
+  if(!(l_ instanceof Symbol)){return false;}
+    final Symbol l = (Symbol) l_;
+  if(!(r_ instanceof JCTree)){return false;}
+    final JCTree r = (JCTree) r_;
+    {
+    final BindingVars _f1_vars = new BindingVars(new BindingVar[]{new BindingVar("ff", ImmutabilityFlowFacts.class)});
+    if(Caster.cast(r.getFlowFacts(ImmutabilityFlowFacts.class), "ff", _f1_vars)){
+        final ImmutabilityFlowFacts ff = (ImmutabilityFlowFacts) _f1_vars.get("ff");
+        {
+        if(ff.mutabilityCheck(ff.immType(l, env), ff.immType(r, env))){
+        }
+        else{
+            return false;
+        }
+        }
+    }
+    else{
+        return false;
+    }
+    }
+    return true;
+}
+
+public boolean hasproperty_mutability_helper_2(final Env<AttrContext> env, final Object l_, final Object r_){
+  if(!(l_ instanceof JCTree)){return false;}
+    final JCTree l = (JCTree) l_;
+  if(!(r_ instanceof JCTree)){return false;}
+    final JCTree r = (JCTree) r_;
+    {
+    final BindingVars _f1_vars = new BindingVars(new BindingVar[]{new BindingVar("ff", ImmutabilityFlowFacts.class)});
+    if(Caster.cast(r.getFlowFacts(ImmutabilityFlowFacts.class), "ff", _f1_vars)){
+        final ImmutabilityFlowFacts ff = (ImmutabilityFlowFacts) _f1_vars.get("ff");
+        {
+        if(ff.mutabilityCheck(ff.immType(l, env), ff.immType(r, env))){
+        }
+        else{
+            return false;
+        }
+        }
+    }
+    else{
+        return false;
+    }
+    }
+    return true;
+}
+
+public boolean hasproperty_mutability_helper(final Env<AttrContext> env, final Object _a0, final Object _a1){
+    return hasproperty_mutability_helper_1(env, _a0, _a1) || hasproperty_mutability_helper_2(env, _a0, _a1);
+}
+
+/*----------------------------------------------*/
+
+
+public boolean hasproperty_mutable_1(final Env<AttrContext> env, final Object s_){
+  if(!(s_ instanceof Symbol)){return false;}
+    final Symbol s = (Symbol) s_;
+    {
+    if(hasAnnotation(s, "javacop.annotations.Mutable")){
+    }
+    else{
+        return false;
+    }
+    }
+    return true;
+}
+
+public boolean hasproperty_mutable(final Env<AttrContext> env, final Object _a0){
+    return hasproperty_mutable_1(env, _a0);
+}
+
+/*----------------------------------------------*/
+
+
+public boolean hasproperty_unclassified_1(final Env<AttrContext> env, final Object s_){
+  if(!(s_ instanceof Symbol)){return false;}
+    final Symbol s = (Symbol) s_;
+    {
+    if(hasAnnotation(s, "javacop.annotations.Unclassified")){
+    }
+    else{
+        return false;
+    }
+    }
+    return true;
+}
+
+public boolean hasproperty_unclassified(final Env<AttrContext> env, final Object _a0){
+    return hasproperty_unclassified_1(env, _a0);
+}
+
+/*----------------------------------------------*/
+
+
+public boolean hasproperty_free_1(final Env<AttrContext> env, final Object s_){
+  if(!(s_ instanceof Symbol)){return false;}
+    final Symbol s = (Symbol) s_;
+    {
+    if(hasAnnotation(s, "javacop.annotations.Free")){
+    }
+    else{
+        return false;
+    }
+    }
+    return true;
+}
+
+public boolean hasproperty_free(final Env<AttrContext> env, final Object _a0){
+    return hasproperty_free_1(env, _a0);
+}
+
+/*----------------------------------------------*/
+
+
+public boolean hasproperty_init_helper_1(final Env<AttrContext> env, final Object l_, final Object r_){
+  if(!(l_ instanceof Symbol)){return false;}
+    final Symbol l = (Symbol) l_;
+  if(!(r_ instanceof JCTree)){return false;}
+    final JCTree r = (JCTree) r_;
+    {
+    final BindingVars _f1_vars = new BindingVars(new BindingVar[]{new BindingVar("ff", ImmutabilityFlowFacts.class)});
+    if(Caster.cast(r.getFlowFacts(ImmutabilityFlowFacts.class), "ff", _f1_vars)){
+        final ImmutabilityFlowFacts ff = (ImmutabilityFlowFacts) _f1_vars.get("ff");
+        {
+        if(ff.initCheck(ff.initType(l, env), ff.initType(r, env))){
+        }
+        else{
+            return false;
+        }
+        }
+    }
+    else{
+        return false;
+    }
+    }
+    return true;
+}
+
+public boolean hasproperty_init_helper_2(final Env<AttrContext> env, final Object l_, final Object r_){
+  if(!(l_ instanceof JCTree)){return false;}
+    final JCTree l = (JCTree) l_;
+  if(!(r_ instanceof JCTree)){return false;}
+    final JCTree r = (JCTree) r_;
+    {
+    final BindingVars _f1_vars = new BindingVars(new BindingVar[]{new BindingVar("ff", ImmutabilityFlowFacts.class)});
+    if(Caster.cast(r.getFlowFacts(ImmutabilityFlowFacts.class), "ff", _f1_vars)){
+        final ImmutabilityFlowFacts ff = (ImmutabilityFlowFacts) _f1_vars.get("ff");
+        {
+        if(ff.initCheck(ff.initType(l, env), ff.initType(r, env))){
+        }
+        else{
+            return false;
+        }
+        }
+    }
+    else{
+        return false;
+    }
+    }
+    return true;
+}
+
+public boolean hasproperty_init_helper(final Env<AttrContext> env, final Object _a0, final Object _a1){
+    return hasproperty_init_helper_1(env, _a0, _a1) || hasproperty_init_helper_2(env, _a0, _a1);
+}
+
+/*----------------------------------------------*/
+
+
+public boolean hasproperty_singleInitAnnotation_1(final Env<AttrContext> env, final Object s_){
+  if(!(s_ instanceof Symbol)){return false;}
+    final Symbol s = (Symbol) s_;
+    {
+    if((((!(hasproperty_free(env, s) && hasproperty_explicitlyCommitted(env, s))) && (!(hasproperty_free(env, s) && hasproperty_unclassified(env, s)))) && (!(hasproperty_explicitlyCommitted(env, s) && hasproperty_unclassified(env, s))))){
+    }
+    else{
+        return false;
+    }
+    }
+    return true;
+}
+
+public boolean hasproperty_singleInitAnnotation(final Env<AttrContext> env, final Object _a0){
+    return hasproperty_singleInitAnnotation_1(env, _a0);
+}
+
+/*----------------------------------------------*/
+
+
+public boolean hasproperty_explicitlyCommitted_1(final Env<AttrContext> env, final Object t_){
+  if(!(t_ instanceof JCTree)){return false;}
+    final JCTree t = (JCTree) t_;
+    {
+    if((holdsSymbol(t) && hasproperty_explicitlyCommitted(env, getSymbol(t)))){
+    }
+    else{
+        return false;
+    }
+    }
+    return true;
+}
+
+public boolean hasproperty_explicitlyCommitted_2(final Env<AttrContext> env, final Object s_){
+  if(!(s_ instanceof Symbol)){return false;}
+    final Symbol s = (Symbol) s_;
+    {
+    if(hasAnnotation(s, "javacop.annotations.Committed")){
+    }
+    else{
+        return false;
+    }
+    }
+    return true;
+}
+
+public boolean hasproperty_explicitlyCommitted(final Env<AttrContext> env, final Object _a0){
+    return hasproperty_explicitlyCommitted_1(env, _a0) || hasproperty_explicitlyCommitted_2(env, _a0);
+}
+
+/*----------------------------------------------*/
+
+
+public boolean hasproperty_singleMutationAnnotation_1(final Env<AttrContext> env, final Object s_){
+  if(!(s_ instanceof Symbol)){return false;}
+    final Symbol s = (Symbol) s_;
+    {
+    if((hasproperty_mutable(env, s) ^ hasproperty_immutable(env, s))){
+    }
+    else{
+        return false;
+    }
+    }
+    return true;
+}
+
+public boolean hasproperty_singleMutationAnnotation(final Env<AttrContext> env, final Object _a0){
+    return hasproperty_singleMutationAnnotation_1(env, _a0);
+}
+
+/*----------------------------------------------*/
+
+
+public boolean hasproperty_definitelyAssignedVariable_1(final Env<AttrContext> env, final Object a_){
+  if(!(a_ instanceof JCAssign)){return false;}
+    final JCAssign a = (JCAssign) a_;
+    {
+    final BindingVars _f1_vars = new BindingVars(new BindingVar[]{new BindingVar("ff", ImmutabilityFlowFacts.class)});
+    if(Caster.cast(a.getFlowFacts(ImmutabilityFlowFacts.class), "ff", _f1_vars)){
+        final ImmutabilityFlowFacts ff = (ImmutabilityFlowFacts) _f1_vars.get("ff");
+        {
+        if(ff.hasBeenInitialized(lhs(a))){
+        }
+        else{
+            return false;
+        }
+        }
+    }
+    else{
+        return false;
+    }
+    }
+    return true;
+}
+
+public boolean hasproperty_definitelyAssignedVariable(final Env<AttrContext> env, final Object _a0){
+    return hasproperty_definitelyAssignedVariable_1(env, _a0);
+}
+
+/*----------------------------------------------*/
+
+
+public boolean hasproperty_immutable_1(final Env<AttrContext> env, final Object s_){
+  if(!(s_ instanceof Symbol)){return false;}
+    final Symbol s = (Symbol) s_;
+    {
+    if((hasAnnotation(s, "javacop.annotations.Immutable") || (!hasproperty_mutable(env, s)))){
+    }
+    else{
+        return false;
+    }
+    }
+    return true;
+}
+
+public boolean hasproperty_immutable_2(final Env<AttrContext> env, final Object t_){
+  if(!(t_ instanceof JCTree)){return false;}
+    final JCTree t = (JCTree) t_;
+    {
+    if((holdsSymbol(t) && hasproperty_immutable(env, getSymbol(t)))){
+    }
+    else{
+        return false;
+    }
+    }
+    return true;
+}
+
+public boolean hasproperty_immutable(final Env<AttrContext> env, final Object _a0){
+    return hasproperty_immutable_1(env, _a0) || hasproperty_immutable_2(env, _a0);
+}
+
+/*----------------------------------------------*/
+
+public void rule_singleInitAnnotation(final JCMethodDecl md, final Env<AttrContext> env){
+    {
+    if(holdsSymbol(md)){
+        {
+        if(hasproperty_singleInitAnnotation(env, getSymbol(md))){
+        }
+        else{
+            wrapWarning(md, "MethodDecl can have only one of: [@Free,@Classified,@Unclassified].");
+        }
+        }
+    }
+    }
+
+}
+public void rule_singleMutationAnnotation(final JCMethodDecl md, final Env<AttrContext> env){
+    {
+    if(holdsSymbol(md)){
+        {
+        if(hasproperty_singleMutationAnnotation(env, getSymbol(md))){
+        }
+        else{
+            wrapWarning(md, "MethodDecl can have only one of: [@Mutable,@Immutable].");
+        }
+        }
+    }
+    }
+
+}
+public void rule_noInitAnnotation(final JCMethodDecl md, final Env<AttrContext> env){
+    {
+    if((holdsSymbol(md) && isConstructor(getSymbol(md)))){
+        {
+        if(hasproperty_noInitAnnotation(env, getSymbol(md))){
+        }
+        else{
+            wrapWarning(md, "Constructors should not have initialization annotations.");
+        }
+        }
+    }
+    }
+
+}
+@Override public void validateMethodDef(final JCMethodDecl tree, final Env<AttrContext> env){
+    rule_singleInitAnnotation(tree,env);
+    rule_singleMutationAnnotation(tree,env);
+    rule_noInitAnnotation(tree,env);
+}
+
+/*----------------------------------------------*/
+
+public void rule_singleInitAnnotation(final JCVariableDecl vd, final Env<AttrContext> env){
+    {
+    if(holdsSymbol(vd)){
+        {
+        if(hasproperty_singleInitAnnotation(env, getSymbol(vd))){
+        }
+        else{
+            wrapWarning(vd, "VarDecl can have only one of: [@Free,@Classified,@Unclassified].");
+        }
+        }
+    }
+    }
+
+}
+public void rule_singleMutationAnnotation(final JCVariableDecl vd, final Env<AttrContext> env){
+    {
+    if(holdsSymbol(vd)){
+        {
+        if(hasproperty_singleMutationAnnotation(env, getSymbol(vd))){
+        }
+        else{
+            wrapWarning(vd, "VarDecl can have only one of: [@Mutable,@Immutable].");
+        }
+        }
+    }
+    }
+
+}
+public void rule_noInitAnnotation(final JCVariableDecl vd, final Env<AttrContext> env){
+    {
+    if(((holdsSymbol(vd) && (!isStatic(getSymbol(vd)))) && (!isLocal(getSymbol(vd))))){
+        {
+        if(hasproperty_noInitAnnotation(env, getSymbol(vd))){
+        }
+        else{
+            wrapWarning(vd, "Fields should not have initialization annotations.");
+        }
+        }
+    }
+    }
+
+}
+public void rule_noStaticFields(final JCVariableDecl vd, final Env<AttrContext> env){
+    {
+    if((!isStatic(sym(vd)))){
+    }
+    else{
+        wrapWarning(vd, "Static fields are currently not allowed.");
+    }
+    }
+
+}
+@Override public void validateVarDef(final JCVariableDecl tree, final Env<AttrContext> env){
+    rule_singleInitAnnotation(tree,env);
+    rule_singleMutationAnnotation(tree,env);
+    rule_noInitAnnotation(tree,env);
+    rule_noStaticFields(tree,env);
+}
+
+/*----------------------------------------------*/
+
+public void rule_assign(final JCAssign a, final Env<AttrContext> env){
+    {
+    if((holdsSymbol(lhs(a)) && hasproperty_committed(env, getSymbol(lhs(a))))){
+        {
+        if(hasproperty_committed(env, rhs(a))){
+        }
+        else{
+            wrapWarning(a, "Left committed but right uncommitted.");
+        }
+        }
+    }
+    }
+
+}
+public void rule_tvarass(final JCAssign a, final Env<AttrContext> env){
+    {
+    if((1 < 2)){
+    }
+    else{
+        wrapError(a, "Rule tvarass failed with no provided reason.\n");
+    }
+    }
+
+}
+@Override public void validateAssign(final JCAssign tree, final Env<AttrContext> env){
+    rule_assign(tree,env);
+    rule_tvarass(tree,env);
+}
+
+/*----------------------------------------------*/
+
+public void subsymbolrule_subtypeCheck(final JCTree r, final Symbol l, final Env<AttrContext> env){
+    {
+    if(hasproperty_mutability_helper(env, l, r)){
+    }
+    else{
+        wrapWarning(r, ((("Cannot assign mutable to immutable or vice versa: " + l) + " <- ") + r));
+    }
+    }
+    {
+    final BindingVars _f1_vars = new BindingVars(new BindingVar[]{new BindingVar("ff", ImmutabilityFlowFacts.class)});
+    if(Caster.cast(r.getFlowFacts(ImmutabilityFlowFacts.class), "ff", _f1_vars)){
+        final ImmutabilityFlowFacts ff = (ImmutabilityFlowFacts) _f1_vars.get("ff");
+        {
+        if(hasproperty_init_helper(env, l, r)){
+        }
+        else{
+            wrapWarning(r, ((("Incompatible init types: " + l) + " <- ") + r));
+        }
+        }
+    }
+    else{
+        wrapError(r, "Rule subtypeCheck failed with no provided reason.\n");
+    }
+    }
+
+}
+public void subsymbolrule_no_mutables_in_immutable_constructor(final JCTree r, final Symbol l, final Env<AttrContext> env){
+    {
+    if((r instanceof JCNewClass)){
+        {
+        final BindingVars _f1_vars = new BindingVars(new BindingVar[]{new BindingVar("ff", ImmutabilityFlowFacts.class)});
+        if(Caster.cast(r.getFlowFacts(ImmutabilityFlowFacts.class), "ff", _f1_vars)){
+            final ImmutabilityFlowFacts ff = (ImmutabilityFlowFacts) _f1_vars.get("ff");
+            {
+            if(ff.constructorCheck(ff.immType(l, env), ff.checkConstructorArgs(r, env))){
+            }
+            else{
+                wrapWarning(r, "Passing a mutable into an immutable object constructor.");
+            }
+            }
+        }
+        else{
+            wrapError(r, "Rule no_mutables_in_immutable_constructor failed with no provided reason.\n");
+        }
+        }
+    }
+    }
+
+}
+@Override public void validateSubsymboling(final JCTree expr, final Symbol supr, final Env<AttrContext> env){
+    subsymbolrule_subtypeCheck(expr,supr,env);
+    subsymbolrule_no_mutables_in_immutable_constructor(expr,supr,env);
+}
+
+/*----------------------------------------------*/
+
+}
