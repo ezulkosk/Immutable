@@ -385,6 +385,70 @@ public boolean hasproperty_immutable(final Env<AttrContext> env, final Object _a
 
 /*----------------------------------------------*/
 
+public void rule_can_only_call_mutator_from_mutator(final JCMethodInvocation mi, final Env<AttrContext> env){
+    {
+    final BindingVars _f1_vars = new BindingVars(new BindingVar[]{new BindingVar("ff", ImmutabilityFlowFacts.class)});
+    if(Caster.cast(mi.getFlowFacts(ImmutabilityFlowFacts.class), "ff", _f1_vars)){
+        final ImmutabilityFlowFacts ff = (ImmutabilityFlowFacts) _f1_vars.get("ff");
+        {
+        if(ff.mutator_calls_check(mi, env)){
+        }
+        else{
+            wrapWarning(mi, "Mutator called from a method without @Free or @Mutates.");
+        }
+        }
+    }
+    else{
+        wrapError(mi, "Rule can_only_call_mutator_from_mutator failed with no provided reason.\n");
+    }
+    }
+
+}
+public void rule_can_only_call_mutator_with_mutable(final JCMethodInvocation mi, final Env<AttrContext> env){
+    {
+    final BindingVars _f1_vars = new BindingVars(new BindingVar[]{new BindingVar("ff", ImmutabilityFlowFacts.class)});
+    if(Caster.cast(mi.getFlowFacts(ImmutabilityFlowFacts.class), "ff", _f1_vars)){
+        final ImmutabilityFlowFacts ff = (ImmutabilityFlowFacts) _f1_vars.get("ff");
+        {
+        if(ff.mutator_receiver_check(mi, env)){
+        }
+        else{
+            wrapWarning(mi, "Mutator called with a committed/unclassified immutable receiver.");
+        }
+        }
+    }
+    else{
+        wrapError(mi, "Rule can_only_call_mutator_with_mutable failed with no provided reason.\n");
+    }
+    }
+
+}
+@Override public void validateApply(final JCMethodInvocation tree, final Env<AttrContext> env){
+    rule_can_only_call_mutator_from_mutator(tree,env);
+    rule_can_only_call_mutator_with_mutable(tree,env);
+}
+
+/*----------------------------------------------*/
+
+public void rule_mutator_requires_mutates(final JCMethodDecl md, final Env<AttrContext> env){
+    {
+    final BindingVars _f1_vars = new BindingVars(new BindingVar[]{new BindingVar("ff", ImmutabilityFlowFacts.class)});
+    if(Caster.cast(md.getFlowFacts(ImmutabilityFlowFacts.class), "ff", _f1_vars)){
+        final ImmutabilityFlowFacts ff = (ImmutabilityFlowFacts) _f1_vars.get("ff");
+        {
+        if(ff.mutator_requires_mutates_check(md, env)){
+        }
+        else{
+            wrapWarning(md, "Field mutations occuring in method without @Mutates or @Free annotation.");
+        }
+        }
+    }
+    else{
+        wrapError(md, "Rule mutator_requires_mutates failed with no provided reason.\n");
+    }
+    }
+
+}
 public void rule_singleInitAnnotation(final JCMethodDecl md, final Env<AttrContext> env){
     {
     if(holdsSymbol(md)){
@@ -428,6 +492,7 @@ public void rule_noInitAnnotation(final JCMethodDecl md, final Env<AttrContext> 
 
 }
 @Override public void validateMethodDef(final JCMethodDecl tree, final Env<AttrContext> env){
+    rule_mutator_requires_mutates(tree,env);
     rule_singleInitAnnotation(tree,env);
     rule_singleMutationAnnotation(tree,env);
     rule_noInitAnnotation(tree,env);
@@ -510,19 +575,8 @@ public void rule_assign(final JCAssign a, final Env<AttrContext> env){
     }
 
 }
-public void rule_tvarass(final JCAssign a, final Env<AttrContext> env){
-    {
-    if((1 < 2)){
-    }
-    else{
-        wrapError(a, "Rule tvarass failed with no provided reason.\n");
-    }
-    }
-
-}
 @Override public void validateAssign(final JCAssign tree, final Env<AttrContext> env){
     rule_assign(tree,env);
-    rule_tvarass(tree,env);
 }
 
 /*----------------------------------------------*/
@@ -536,19 +590,10 @@ public void subsymbolrule_subtypeCheck(final JCTree r, final Symbol l, final Env
     }
     }
     {
-    final BindingVars _f1_vars = new BindingVars(new BindingVar[]{new BindingVar("ff", ImmutabilityFlowFacts.class)});
-    if(Caster.cast(r.getFlowFacts(ImmutabilityFlowFacts.class), "ff", _f1_vars)){
-        final ImmutabilityFlowFacts ff = (ImmutabilityFlowFacts) _f1_vars.get("ff");
-        {
-        if(hasproperty_init_helper(env, l, r)){
-        }
-        else{
-            wrapWarning(r, ((("Incompatible init types: " + l) + " <- ") + r));
-        }
-        }
+    if(hasproperty_init_helper(env, l, r)){
     }
     else{
-        wrapError(r, "Rule subtypeCheck failed with no provided reason.\n");
+        wrapWarning(r, ((("Incompatible init types: " + l) + " <- ") + r));
     }
     }
 

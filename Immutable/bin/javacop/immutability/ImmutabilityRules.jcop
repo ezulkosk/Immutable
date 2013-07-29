@@ -5,9 +5,10 @@
  * 
  * Implemented in conjunction with an immutable type system.
  * 
- * Course Project: ECE750 Spring 2013
+ * Course Project: ECE750, University of Waterloo, Spring 2013
  * Author: Ed Zulkoski
  */
+
 package javacop.immutability;
 flowfact ImmutabilityFlowFacts;
 
@@ -68,10 +69,8 @@ declare immutable(JCTree t){
 rule subtypeCheck(r <<: l){
 	require(mutability_helper(l, r)):warning(r,
 			"Cannot assign mutable to immutable or vice versa: " + l + " <- " + r);
-	require(ImmutabilityFlowFacts ff; ff <- r#getFlowFacts(ImmutabilityFlowFacts#class)){ //this line is only used for error messages
-		require(init_helper(l,r)):warning(r,
-				"Incompatible init types: " + l + " <- " + r);
-	}
+	require(init_helper(l,r)):warning(r,
+			"Incompatible init types: " + l + " <- " + r);
 }
 
 
@@ -85,7 +84,7 @@ declare mutability_helper(Symbol l, JCTree r){
 	}
 }
 
-// I'm unsure if this is ever called. Might be able to remove.
+// I don't think this is ever called. Might be able to remove.
 declare mutability_helper(JCTree l, JCTree r){
 	require(ImmutabilityFlowFacts ff; ff <- r#getFlowFacts(ImmutabilityFlowFacts#class)){
 		require(ff#mutabilityCheck(ff#immType(l, env), ff#immType(r, env)));
@@ -118,12 +117,6 @@ declare init_helper(JCTree l, JCTree r){
 	}
 }
 
-declare definitelyAssignedVariable(JCAssign a){
-	require(ImmutabilityFlowFacts ff ; ff <- a#getFlowFacts(ImmutabilityFlowFacts#class)){
-		require(ff#hasBeenInitialized(a.lhs));
-	}
-}
-
 
 rule assign(JCAssign a){
 	where(a.lhs.holdsSymbol && committed(a.lhs.getSymbol)){
@@ -131,14 +124,51 @@ rule assign(JCAssign a){
 	}
 }
 
-// T_Var_Ass
-// if lhs is a field access of a committed immutable object, error 
-//  (unless it's a self-assignment (a.lhs = a.lhs), but not worth handling)
-rule tvarass(JCAssign a){
-	require(1 < 2);
+//don't think I need this
+declare definitelyAssignedVariable(JCAssign a){
+	require(ImmutabilityFlowFacts ff ; ff <- a#getFlowFacts(ImmutabilityFlowFacts#class)){
+		require(ff#hasBeenInitialized(a.lhs));
+	}
 }
 
 
+/*-----------------------*/
+/* Method Receiver Rules */
+/*-----------------------*/
+
+// If a method is passed a committed immutable receiver, then it cannot have the @Mutates annotation 
+/*rule immutable_receiver_check(JCMethodInvocation mi){
+	//TODO check for committed immutable
+	require(ImmutabilityFlowFacts ff ; ff <- mi#getFlowFacts(ImmutabilityFlowFacts#class)){
+		require(!ff#is_mutator(mi, env)/*TODO change to determine of receiver is IMM)
+			:warning(mi, "Immutable receiver mutated by the method call: " + mi + ".");
+	}
+}
+*/
+
+
+//Methods that mutate the receiver should not be called with committed immutable receivers.
+//Mutators are tracked using the @Mutates annotation.
+//This method checks if any fields are mutated directly (i.e. not by calling another method).
+rule mutator_requires_mutates(JCMethodDecl md){
+	require(ImmutabilityFlowFacts ff ; ff <- md#getFlowFacts(ImmutabilityFlowFacts#class)){
+		require(ff#mutator_requires_mutates_check(md, env)):warning(md, "Field mutations occuring in method without @Mutates or @Free annotation.");
+	}
+}
+
+//This ensures that non-mutators cannot call mutators.
+rule can_only_call_mutator_from_mutator(JCMethodInvocation mi){
+	require(ImmutabilityFlowFacts ff ; ff <- mi#getFlowFacts(ImmutabilityFlowFacts#class)){
+		require(ff#mutator_calls_check(mi, env)):warning(mi, "Mutator called from a method without @Free or @Mutates.");
+	}
+}
+
+//This ensures that committed immutable objects cannot use mutators. 
+rule can_only_call_mutator_with_mutable(JCMethodInvocation mi){
+	require(ImmutabilityFlowFacts ff ; ff <- mi#getFlowFacts(ImmutabilityFlowFacts#class)){
+		require(ff#mutator_receiver_check(mi, env)):warning(mi, "Mutator called with a committed/unclassified immutable receiver.");
+	}
+}
 
 /*--------------------*/
 /* Sanity Constraints */	
