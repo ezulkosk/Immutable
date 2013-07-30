@@ -80,21 +80,23 @@ rule subtypeCheck(r <<: l){
 
 declare mutability_helper(Symbol l, JCTree r){
 	require(ImmutabilityFlowFacts ff; ff <- r#getFlowFacts(ImmutabilityFlowFacts#class)){
-		require(ff#mutabilityCheck(ff#immType(l, env), ff#immType(r, env)));
+		require(ff#mutabilityCheck(ff#immType(l ), ff#immType(r )));
 	}
 }
 
 // I don't think this is ever called. Might be able to remove.
 declare mutability_helper(JCTree l, JCTree r){
 	require(ImmutabilityFlowFacts ff; ff <- r#getFlowFacts(ImmutabilityFlowFacts#class)){
-		require(ff#mutabilityCheck(ff#immType(l, env), ff#immType(r, env)));
+		require(ff#mutabilityCheck(ff#immType(l ), ff#immType(r )));
 	}
 }
+
+
 
 rule no_mutables_in_immutable_constructor(r <<: l){
 	where(r instanceof JCNewClass){
 		require(ImmutabilityFlowFacts ff; ff <- r#getFlowFacts(ImmutabilityFlowFacts#class)){
-			require(ff#constructorCheck(ff#immType(l, env), ff#checkConstructorArgs(r, env))):warning(r, 
+			require(ff#constructorCheck(ff#immType(l ), ff#checkConstructorArgs(r ))):warning(r, 
 					"Passing a mutable into an immutable object constructor.");
 		}
 	}	
@@ -106,23 +108,24 @@ rule no_mutables_in_immutable_constructor(r <<: l){
 
 declare init_helper(Symbol l, JCTree r){
 	require(ImmutabilityFlowFacts ff; ff <- r#getFlowFacts(ImmutabilityFlowFacts#class)){
-		require(ff#initCheck(ff#initType(l, env), ff#initType(r, env)));
+		require(ff#initCheck(ff#initType(l ), ff#initType(r )));
 	}
 }
 
 // I'm unsure if this is ever called. Might be able to remove.
 declare init_helper(JCTree l, JCTree r){
 	require(ImmutabilityFlowFacts ff; ff <- r#getFlowFacts(ImmutabilityFlowFacts#class)){
-		require(ff#initCheck(ff#initType(l, env), ff#initType(r, env)));
+		require(ff#initCheck(ff#initType(l ), ff#initType(r )));
 	}
 }
 
-
+/*
 rule assign(JCAssign a){
 	where(a.lhs.holdsSymbol && committed(a.lhs.getSymbol)){
-		require(committed(a.rhs) /*definitelyAssignedVariable(a)*/): warning(a, "Left committed but right uncommitted.");
+		require(committed(a.rhs) /*definitelyAssignedVariable(a)): warning(a, "Left committed but right uncommitted.");
 	}
 }
+*/
 
 //don't think I need this
 declare definitelyAssignedVariable(JCAssign a){
@@ -131,6 +134,17 @@ declare definitelyAssignedVariable(JCAssign a){
 	}
 }
 
+/*------------------*/
+/* Assignment Check */
+/*------------------*/
+
+//slightly redundant code
+//if lhs is committed and immutable, error
+rule assignment(JCAssign a){
+	require(ImmutabilityFlowFacts ff; ff <- a#getFlowFacts(ImmutabilityFlowFacts#class)){
+		require(ff#assign_to_committed_immutable_check(ff#initType(a.lhs), ff#immType(a.lhs))):warning(a, "Assigning to committed immutable object.");
+	}
+}
 
 /*-----------------------*/
 /* Method Receiver Rules */
@@ -152,7 +166,7 @@ declare definitelyAssignedVariable(JCAssign a){
 //This method checks if any fields are mutated directly (i.e. not by calling another method).
 rule mutator_requires_mutates(JCMethodDecl md){
 	require(ImmutabilityFlowFacts ff ; ff <- md#getFlowFacts(ImmutabilityFlowFacts#class)){
-		require(ff#mutator_requires_mutates_check(md, env)):warning(md, "Field mutations occuring in method without @Mutates or @Free annotation.");
+		require(ff#mutator_requires_mutates_check(md )):warning(md, "Field mutations occuring in method without @Mutates or @Free annotation.");
 	}
 }
 
@@ -166,7 +180,7 @@ rule can_only_call_mutator_from_mutator(JCMethodInvocation mi){
 //This ensures that committed immutable objects cannot use mutators. 
 rule can_only_call_mutator_with_mutable(JCMethodInvocation mi){
 	require(ImmutabilityFlowFacts ff ; ff <- mi#getFlowFacts(ImmutabilityFlowFacts#class)){
-		require(ff#mutator_receiver_check(mi, env)):warning(mi, "Mutator called with a committed/unclassified immutable receiver.");
+		require(ff#mutator_receiver_check(mi )):warning(mi, "Mutator called with a committed/unclassified immutable receiver.");
 	}
 }
 

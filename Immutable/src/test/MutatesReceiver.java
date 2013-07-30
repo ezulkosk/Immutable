@@ -1,5 +1,6 @@
 package test;
 
+import javacop.annotations.Free;
 import javacop.annotations.Immutable;
 import javacop.annotations.Mutable;
 import javacop.annotations.Mutates;
@@ -13,33 +14,43 @@ import javacop.annotations.Unclassified;
 //Lines commented with "Error" should still produce 
 //  warnings after these changes.
 public class MutatesReceiver{
-	int x;
-	MutatesReceiver field;
+	@Mutable int x;
+	MutatesReceiver field, field2;
 	
-	@Mutates public void setField(int f){
-		setField2(f);
+	@Mutates public void setField(){
+		setField2();
 	}
 	
-	@Mutates public void setField2(int f){
-		x = f;
+	@Mutates public void setField2(){
+		x = 1;
 	}
+	
 	
 	//I guess main will require the @Mutates annotation.
 	//Slightly awkward, but oh well.
 	@Mutates public void myMain(){
 		@Immutable MutatesReceiver i = new MutatesReceiver();
 		@Mutable MutatesReceiver m = new MutatesReceiver();
-		i.setField(1); //Error, trying to mutate an immutable
-		m.setField(2); //OK, m is mutable, mutators are allowed
+		i.setField(); //Error, trying to mutate an immutable
+		m.setField(); //OK, m is mutable, mutators are allowed
 	}
 	
 	public MutatesReceiver(){
-		field = new MutatesReceiver(this); //field is still free at this point, since this is not committed
-		field.setField(3); //OK, we can mutate objects under construction (i.e. free objects)
+		
+		field = new MutatesReceiver(this);//field is still free at this point, since this is not committed
+		field.setField();//OK, we can mutate objects under construction (i.e. free objects)
+		field2 = new MutatesReceiver();
+		field2.setField();//Error, field2 is committed at this point
 	}
 	
 	public MutatesReceiver(@Unclassified MutatesReceiver other){
-		other.setField(4); //since other _may_ be committed (even though it never is in this code), we cannot mutate it.
+		
+		other.setField(); //Error, since other _may_ be committed (even though it never is in this code), we cannot mutate it.
+	}
+	
+	public @Mutates void test(){
+		@Mutable int z = this.x;
+		@Mutable int y = x;
 	}
 	
 }

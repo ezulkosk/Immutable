@@ -91,7 +91,7 @@ public boolean hasproperty_mutability_helper_1(final Env<AttrContext> env, final
     if(Caster.cast(r.getFlowFacts(ImmutabilityFlowFacts.class), "ff", _f1_vars)){
         final ImmutabilityFlowFacts ff = (ImmutabilityFlowFacts) _f1_vars.get("ff");
         {
-        if(ff.mutabilityCheck(ff.immType(l, env), ff.immType(r, env))){
+        if(ff.mutabilityCheck(ff.immType(l), ff.immType(r))){
         }
         else{
             return false;
@@ -115,7 +115,7 @@ public boolean hasproperty_mutability_helper_2(final Env<AttrContext> env, final
     if(Caster.cast(r.getFlowFacts(ImmutabilityFlowFacts.class), "ff", _f1_vars)){
         final ImmutabilityFlowFacts ff = (ImmutabilityFlowFacts) _f1_vars.get("ff");
         {
-        if(ff.mutabilityCheck(ff.immType(l, env), ff.immType(r, env))){
+        if(ff.mutabilityCheck(ff.immType(l), ff.immType(r))){
         }
         else{
             return false;
@@ -206,7 +206,7 @@ public boolean hasproperty_init_helper_1(final Env<AttrContext> env, final Objec
     if(Caster.cast(r.getFlowFacts(ImmutabilityFlowFacts.class), "ff", _f1_vars)){
         final ImmutabilityFlowFacts ff = (ImmutabilityFlowFacts) _f1_vars.get("ff");
         {
-        if(ff.initCheck(ff.initType(l, env), ff.initType(r, env))){
+        if(ff.initCheck(ff.initType(l), ff.initType(r))){
         }
         else{
             return false;
@@ -230,7 +230,7 @@ public boolean hasproperty_init_helper_2(final Env<AttrContext> env, final Objec
     if(Caster.cast(r.getFlowFacts(ImmutabilityFlowFacts.class), "ff", _f1_vars)){
         final ImmutabilityFlowFacts ff = (ImmutabilityFlowFacts) _f1_vars.get("ff");
         {
-        if(ff.initCheck(ff.initType(l, env), ff.initType(r, env))){
+        if(ff.initCheck(ff.initType(l), ff.initType(r))){
         }
         else{
             return false;
@@ -410,7 +410,7 @@ public void rule_can_only_call_mutator_with_mutable(final JCMethodInvocation mi,
     if(Caster.cast(mi.getFlowFacts(ImmutabilityFlowFacts.class), "ff", _f1_vars)){
         final ImmutabilityFlowFacts ff = (ImmutabilityFlowFacts) _f1_vars.get("ff");
         {
-        if(ff.mutator_receiver_check(mi, env)){
+        if(ff.mutator_receiver_check(mi)){
         }
         else{
             wrapWarning(mi, "Mutator called with a committed/unclassified immutable receiver.");
@@ -436,7 +436,7 @@ public void rule_mutator_requires_mutates(final JCMethodDecl md, final Env<AttrC
     if(Caster.cast(md.getFlowFacts(ImmutabilityFlowFacts.class), "ff", _f1_vars)){
         final ImmutabilityFlowFacts ff = (ImmutabilityFlowFacts) _f1_vars.get("ff");
         {
-        if(ff.mutator_requires_mutates_check(md, env)){
+        if(ff.mutator_requires_mutates_check(md)){
         }
         else{
             wrapWarning(md, "Field mutations occuring in method without @Mutates or @Free annotation.");
@@ -561,22 +561,27 @@ public void rule_noStaticFields(final JCVariableDecl vd, final Env<AttrContext> 
 
 /*----------------------------------------------*/
 
-public void rule_assign(final JCAssign a, final Env<AttrContext> env){
+public void rule_assignment(final JCAssign a, final Env<AttrContext> env){
     {
-    if((holdsSymbol(lhs(a)) && hasproperty_committed(env, getSymbol(lhs(a))))){
+    final BindingVars _f1_vars = new BindingVars(new BindingVar[]{new BindingVar("ff", ImmutabilityFlowFacts.class)});
+    if(Caster.cast(a.getFlowFacts(ImmutabilityFlowFacts.class), "ff", _f1_vars)){
+        final ImmutabilityFlowFacts ff = (ImmutabilityFlowFacts) _f1_vars.get("ff");
         {
-        if(hasproperty_committed(env, rhs(a))){
+        if(ff.assign_to_committed_immutable_check(ff.initType(lhs(a)), ff.immType(lhs(a)))){
         }
         else{
-            wrapWarning(a, "Left committed but right uncommitted.");
+            wrapWarning(a, "Assigning to committed immutable object.");
         }
         }
+    }
+    else{
+        wrapError(a, "Rule assignment failed with no provided reason.\n");
     }
     }
 
 }
 @Override public void validateAssign(final JCAssign tree, final Env<AttrContext> env){
-    rule_assign(tree,env);
+    rule_assignment(tree,env);
 }
 
 /*----------------------------------------------*/
@@ -606,7 +611,7 @@ public void subsymbolrule_no_mutables_in_immutable_constructor(final JCTree r, f
         if(Caster.cast(r.getFlowFacts(ImmutabilityFlowFacts.class), "ff", _f1_vars)){
             final ImmutabilityFlowFacts ff = (ImmutabilityFlowFacts) _f1_vars.get("ff");
             {
-            if(ff.constructorCheck(ff.immType(l, env), ff.checkConstructorArgs(r, env))){
+            if(ff.constructorCheck(ff.immType(l), ff.checkConstructorArgs(r))){
             }
             else{
                 wrapWarning(r, "Passing a mutable into an immutable object constructor.");
