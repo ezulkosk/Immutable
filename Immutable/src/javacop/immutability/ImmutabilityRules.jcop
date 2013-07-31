@@ -150,17 +150,6 @@ rule assignment(JCAssign a){
 /* Method Receiver Rules */
 /*-----------------------*/
 
-// If a method is passed a committed immutable receiver, then it cannot have the @Mutates annotation 
-/*rule immutable_receiver_check(JCMethodInvocation mi){
-	//TODO check for committed immutable
-	require(ImmutabilityFlowFacts ff ; ff <- mi#getFlowFacts(ImmutabilityFlowFacts#class)){
-		require(!ff#is_mutator(mi, env)/*TODO change to determine of receiver is IMM)
-			:warning(mi, "Immutable receiver mutated by the method call: " + mi + ".");
-	}
-}
-*/
-
-
 //Methods that mutate the receiver should not be called with committed immutable receivers.
 //Mutators are tracked using the @Mutates annotation.
 //This method checks if any fields are mutated directly (i.e. not by calling another method).
@@ -183,6 +172,27 @@ rule can_only_call_mutator_with_mutable(JCMethodInvocation mi){
 		require(ff#mutator_receiver_check(mi )):warning(mi, "Mutator called with a committed/unclassified immutable receiver.");
 	}
 }
+
+rule receiver_init_check(JCMethodInvocation mi){
+	require(ImmutabilityFlowFacts ff ; ff <- mi#getFlowFacts(ImmutabilityFlowFacts#class)){
+		require(ff#receiver_init_check(mi)):warning(mi, "Init-type of receiver and method incompatible.");
+	}
+}
+
+
+/*--------------*/
+/* Conditionals */
+/*--------------*/
+
+//Ensures that two branches of a conditional have the same init and immutability types
+//NOT ROBUST (mainly to get java.lang.Boolean.java working)
+//I should be using branching flowfacts, but it would be overkill at this point.
+rule check_conditionals(JCConditional c){
+	require(ImmutabilityFlowFacts ff ; ff <- c#getFlowFacts(ImmutabilityFlowFacts#class)){
+		require(ff#check_conditional(c)):warning(c, "Init-type or mutability type of conditional branches differ.");
+	}
+}
+
 
 /*--------------------*/
 /* Sanity Constraints */	
@@ -231,6 +241,7 @@ declare noInitAnnotation(Symbol s){
 	require(!free(s) && !explicitlyCommitted(s) && !unclassified(s));
 }
 
+//I guess we change it to FreeM and UnclassifiedM for methods.
 rule noInitAnnotation(JCMethodDecl md){
 	where(md.holdsSymbol && md.getSymbol.isConstructor){
 		require(noInitAnnotation(md.getSymbol)):warning(md, "Constructors should not have initialization annotations.");

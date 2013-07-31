@@ -1,6 +1,6 @@
 package test;
 
-import javacop.annotations.Free;
+import javacop.annotations.FreeM;
 import javacop.annotations.Immutable;
 import javacop.annotations.Mutable;
 import javacop.annotations.Mutates;
@@ -39,14 +39,22 @@ public class MutatesReceiver{
 		
 		field = new MutatesReceiver(this);//field is still free at this point, since this is not committed
 		field.setField();//OK, we can mutate objects under construction (i.e. free objects)
-		field2 = new MutatesReceiver();
+		field2 = new MutatesReceiver();//field2 is now committed 
 		field2.setField();//Error, field2 is committed at this point
 	}
 	
 	public MutatesReceiver(@Unclassified MutatesReceiver other){
-		
+		this.field.setField();//OK
+		field.setField();//OK
 		other.setField(); //Error, since other _may_ be committed (even though it never is in this code), we cannot mutate it.
 	}
+	
+	@FreeM public void test2(){
+		this.x = 0;
+		field.setField();
+		x = 0;
+	}
+	
 	
 	public @Mutates void test(){
 		@Mutable int z = this.x;

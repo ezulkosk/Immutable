@@ -423,9 +423,29 @@ public void rule_can_only_call_mutator_with_mutable(final JCMethodInvocation mi,
     }
 
 }
+public void rule_receiver_init_check(final JCMethodInvocation mi, final Env<AttrContext> env){
+    {
+    final BindingVars _f1_vars = new BindingVars(new BindingVar[]{new BindingVar("ff", ImmutabilityFlowFacts.class)});
+    if(Caster.cast(mi.getFlowFacts(ImmutabilityFlowFacts.class), "ff", _f1_vars)){
+        final ImmutabilityFlowFacts ff = (ImmutabilityFlowFacts) _f1_vars.get("ff");
+        {
+        if(ff.receiver_init_check(mi)){
+        }
+        else{
+            wrapWarning(mi, "Init-type of receiver and method incompatible.");
+        }
+        }
+    }
+    else{
+        wrapError(mi, "Rule receiver_init_check failed with no provided reason.\n");
+    }
+    }
+
+}
 @Override public void validateApply(final JCMethodInvocation tree, final Env<AttrContext> env){
     rule_can_only_call_mutator_from_mutator(tree,env);
     rule_can_only_call_mutator_with_mutable(tree,env);
+    rule_receiver_init_check(tree,env);
 }
 
 /*----------------------------------------------*/
@@ -557,6 +577,31 @@ public void rule_noStaticFields(final JCVariableDecl vd, final Env<AttrContext> 
     rule_singleMutationAnnotation(tree,env);
     rule_noInitAnnotation(tree,env);
     rule_noStaticFields(tree,env);
+}
+
+/*----------------------------------------------*/
+
+public void rule_check_conditionals(final JCConditional c, final Env<AttrContext> env){
+    {
+    final BindingVars _f1_vars = new BindingVars(new BindingVar[]{new BindingVar("ff", ImmutabilityFlowFacts.class)});
+    if(Caster.cast(c.getFlowFacts(ImmutabilityFlowFacts.class), "ff", _f1_vars)){
+        final ImmutabilityFlowFacts ff = (ImmutabilityFlowFacts) _f1_vars.get("ff");
+        {
+        if(ff.check_conditional(c)){
+        }
+        else{
+            wrapWarning(c, "Init-type or mutability type of conditional branches differ.");
+        }
+        }
+    }
+    else{
+        wrapError(c, "Rule check_conditionals failed with no provided reason.\n");
+    }
+    }
+
+}
+@Override public void validateConditional(final JCConditional tree, final Env<AttrContext> env){
+    rule_check_conditionals(tree,env);
 }
 
 /*----------------------------------------------*/

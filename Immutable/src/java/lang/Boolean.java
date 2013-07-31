@@ -25,6 +25,8 @@
 
 package java.lang;
 
+import javacop.annotations.Mutable;
+
 /**
  * The Boolean class wraps a value of the primitive type
  * {@code boolean} in an object. An object of type
@@ -232,6 +234,8 @@ public final class Boolean implements java.io.Serializable,
      * @see     java.lang.System#getProperty(java.lang.String)
      * @see     java.lang.System#getProperty(java.lang.String, java.lang.String)
      */
+    
+    /* Regular
     public static boolean getBoolean(String name) {
         boolean result = false;
         try {
@@ -241,7 +245,31 @@ public final class Boolean implements java.io.Serializable,
         }
         return result;
     }
+    */
+    
+    /* Option 1
+    @Mutable public static boolean getBoolean(@Mutable String name) {
+        @Mutable boolean result = false;
+        try {
+            result = toBoolean(System.getProperty(name));
+        } catch (IllegalArgumentException e) {
+        } catch (NullPointerException e) {
+        }
+        return result;
+    }
+    */
 
+    /* OPTION 2*/
+    public static boolean getBoolean(String name) {
+        //boolean result = false;
+        try {
+            return toBoolean(System.getProperty(name));
+        } catch (IllegalArgumentException e) {
+        } catch (NullPointerException e) {
+        }
+        return false;
+    }
+    
     /**
      * Compares this {@code Boolean} instance with another.
      *
@@ -258,7 +286,13 @@ public final class Boolean implements java.io.Serializable,
         return (b.value == value ? 0 : (value ? 1 : -1));
     }
 
-    private static boolean toBoolean(String name) {
+    private static boolean toBoolean( String name) {
         return ((name != null) && name.equalsIgnoreCase("true"));
     }
+    
+    /* OPTION 1
+    @Mutable private static boolean toBoolean(@Mutable String name) {
+        return ((name != null) && name.equalsIgnoreCase("true"));
+    }
+    */
 }

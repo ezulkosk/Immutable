@@ -26,6 +26,7 @@ import com.sun.tools.javac.comp.FlowFacts;
 import com.sun.tools.javac.tree.JCTree;
 import com.sun.tools.javac.tree.JCTree.JCAnnotation;
 import com.sun.tools.javac.tree.JCTree.JCAssign;
+import com.sun.tools.javac.tree.JCTree.JCBinary;
 import com.sun.tools.javac.tree.JCTree.JCBlock;
 import com.sun.tools.javac.tree.JCTree.JCConditional;
 import com.sun.tools.javac.tree.JCTree.JCExpression;
@@ -36,13 +37,16 @@ import com.sun.tools.javac.tree.JCTree.JCMethodDecl;
 import com.sun.tools.javac.tree.JCTree.JCMethodInvocation;
 import com.sun.tools.javac.tree.JCTree.JCModifiers;
 import com.sun.tools.javac.tree.JCTree.JCNewClass;
+import com.sun.tools.javac.tree.JCTree.JCParens;
 import com.sun.tools.javac.tree.JCTree.JCStatement;
+import com.sun.tools.javac.tree.JCTree.JCTypeCast;
 import com.sun.tools.javac.tree.JCTree.JCVariableDecl;
 import com.sun.tools.javac.tree.TreeInfo;
 import com.sun.tools.javac.util.Name;
 
 import constrainer.AbstractConstraints;
 
+// If the purpose of a method is unclear, checking the jcop file may help.
 // Probably could do most of these analyses in the jcop file,
 // but Eclipse makes working Java-side so much easier.
 // Could benefit from a lot of refactoring...
@@ -51,8 +55,10 @@ public class ImmutabilityFlowFacts extends AbstractFlowFacts<String>  {
 	
 	// EITHER -- literals / return of constructor
 	public static final int MUTABLE = 0, IMMUTABLE = 1, EITHER = 2;
-	public static final int FREE = 3, COMMITTED = 4, UNCLASSIFIED = 5, UNDEFINED = 6, THIS = 7; 
+	public static final int FREE = 3, COMMITTED = 4, UNCLASSIFIED = 5, UNDEFINED = 6, THIS = 7;
 	public String currLeft = "";
+	static String justBeenSet = null;
+	
 	
 	
     public ImmutabilityFlowFacts(AbstractConstraints jcop){
@@ -70,14 +76,15 @@ public class ImmutabilityFlowFacts extends AbstractFlowFacts<String>  {
     //method that checks if mods contains the annotation s
     public boolean hasAnnotation(JCModifiers mods, String s){
     	for(JCAnnotation a : mods.annotations)
-    		if(a.annotationType.toString().equals(s))
+    		if(a.annotationType.toString().equals(s)||a.annotationType.toString().equals(s+"M"))
     			return true;
     	return false;
     }
     
     public boolean hasAnnotation(List<Compound> mods, String s){
     	for(Compound a : mods)
-    		if(a.toString().equals("@javacop.annotations." + s))
+    		if(a.toString().equals("@javacop.annotations." + s)||
+    				a.toString().equals("@javacop.annotations." + s+"M"))
     			return true;
     	return false;
     }
@@ -112,7 +119,7 @@ public class ImmutabilityFlowFacts extends AbstractFlowFacts<String>  {
     //ensure we're not putting an immutable in a mutable or vice versa, 
     //Note: EITHER only occurs on return from a constructor
     public boolean mutabilityCheck(int l, int r){
-    	System.out.println(l + " " + r);
+    	//System.out.println(l + " " + r);
     	return(l == r || r == EITHER);
     }
     
@@ -121,21 +128,21 @@ public class ImmutabilityFlowFacts extends AbstractFlowFacts<String>  {
     // immutable if it, or its enclosing object, is declared immutable.
     // So we need to check both the field itself and its parents for immutability.
     public int immType(JCFieldAccess fa){
-    	System.out.println("FA: " + fa + " " + fa.sym.getAnnotationMirrors());
+    	//System.out.println("FA: " + fa + " " + fa.sym.getAnnotationMirrors());
     	
     		
     	if(!hasAnnotation(fa.sym.getAnnotationMirrors(),"Mutable"))
     		return IMMUTABLE;
     	if(fa.selected.toString().equals("this"))
     		return MUTABLE;
-    	System.out.println("imm: " + fa + " " + immType(fa.selected));
+    	//System.out.println("imm: " + fa + " " + immType(fa.selected));
     	return immType(fa.selected);
     }
     
     public int immType(JCIdent id){
     	
     	Symbol s = id.sym;
-    	System.out.println(id+ "  " + s.getAnnotationMirrors());
+    	//System.out.println(id+ "  " + s.getAnnotationMirrors());
     	if(!hasAnnotation(s.getAnnotationMirrors(),"Mutable"))
     		return IMMUTABLE;
     	else
@@ -143,12 +150,13 @@ public class ImmutabilityFlowFacts extends AbstractFlowFacts<String>  {
     } 
     
     
-    //TODO handle casts somewhere 
     //TODO handle call with free receiver from committed receiver
     //TODO handle the other rules for @Mutates (only one left is assign to mutable)
     //TODO change so that when accessing the fields of a free object the fields are unclassified, not free
-   
-   //A method returns an immutable object if it is not declared mutable
+    //XXX use mi.meth.type to get the return type and args
+    
+    
+    //A method returns an immutable object if it is not declared mutable
     public int immType(JCMethodInvocation mi){
     	JCTree sel = mi.getMethodSelect();
     	Symbol s = null;
@@ -161,7 +169,7 @@ public class ImmutabilityFlowFacts extends AbstractFlowFacts<String>  {
     		s = ((JCIdent)sel).sym.owner;
     		name = ((JCIdent)sel).name;
     	}
-    	//XXX use mi.meth.type to get the return type and args
+    	
     	for(Symbol t : s.enclClass().getEnclosedElements()){
     		if(t instanceof MethodSymbol){
     			MethodSymbol ms = (MethodSymbol)t;
@@ -202,6 +210,36 @@ public class ImmutabilityFlowFacts extends AbstractFlowFacts<String>  {
     		ret = immType((JCNewClass)t );
     	else if(t instanceof LiteralTree)
     		ret = EITHER;
+    	else if(t instanceof JCConditional){
+    		JCConditional c = (JCConditional)t;
+    		int fval = immType(c.getFalseExpression());
+    		int tval = immType(c.getTrueExpression());
+    		//System.out.println("COND: " + fval + " " + tval);
+    		if(!mutabilityCheck(fval,tval) && !mutabilityCheck(tval,fval))
+    			return -1;
+    		if(fval == EITHER || tval == EITHER)
+    			ret =  EITHER;
+    		else
+    			ret = fval;
+    	}
+    	else if(t instanceof JCBinary){
+    		JCBinary b = (JCBinary)t;
+    		int lval = immType(b.lhs);
+    		int rval = immType(b.rhs);
+    		//System.out.println("BINARY: " + b + " " + lval + " " + rval);
+    		if(!mutabilityCheck(lval,rval) && !mutabilityCheck(rval,lval))
+    			return -1;
+    		if(lval == EITHER || rval == EITHER)
+    			ret =  EITHER;
+    		else
+    			ret = lval;
+    	}
+    	else if(t instanceof JCTypeCast){
+    		ret = immType(((JCTypeCast)t).expr);
+    	}
+    	else if(t instanceof JCParens){
+    		ret = immType(((JCParens)t).expr);
+    	}
     	else
     		System.out.println("Unhandled case in immType: " + t + " " + t.getClass());
     	return ret;
@@ -213,7 +251,7 @@ public class ImmutabilityFlowFacts extends AbstractFlowFacts<String>  {
     
     // determines if the enclosing method/constructor's receiver is Free 
     // (always true for constructors)
-    public int receiverType(Symbol s){
+    public int receiverType(){
     	//System.out.println("sym: " + s + " " + s.getAnnotationMirrors() + s.getClass());
     	
     	if(this.contains(FREE+"this"))
@@ -239,12 +277,14 @@ public class ImmutabilityFlowFacts extends AbstractFlowFacts<String>  {
     public boolean initCheck(int l, int r){
     	//System.out.println(l + " " + r);
     	//System.out.println(currLeft);
-    	return l == UNCLASSIFIED || l == UNDEFINED || l == r;
+    	return l == UNCLASSIFIED || l == UNDEFINED || r == EITHER || l == r;
     }
     
     public int initType(JCFieldAccess fa){
-    	System.out.println("FA " + fa  + " " + initType(fa.selected) + " " + this);
+    	//System.out.println("FA " + fa  + " " + initType(fa.selected) + " " + this);
     	int init = initType(fa.selected);
+    	if(init == FREE && fa.selected.toString().equals("this"))
+    		return FREE;
     	if(init == FREE)
     		return UNCLASSIFIED;
     	else
@@ -253,7 +293,7 @@ public class ImmutabilityFlowFacts extends AbstractFlowFacts<String>  {
    
     
     public int checkInFlowFacts(Symbol owner, String id){
-    	//System.out.println(owner + " " + id + " " + this);
+    	//System.out.println("owner: " + owner + " " + id + " " + this);
     	if((owner instanceof MethodSymbol && (((MethodSymbol)owner).isConstructor()
     			|| hasAnnotation(((MethodSymbol)owner).getAnnotationMirrors(), "Free")))
     			|| owner instanceof ClassSymbol) {	
@@ -274,6 +314,8 @@ public class ImmutabilityFlowFacts extends AbstractFlowFacts<String>  {
     			return UNDEFINED;
     		}
     	}
+    	if(owner instanceof ClassSymbol)
+    		return receiverType();
     	return 0;
     }
     
@@ -285,9 +327,9 @@ public class ImmutabilityFlowFacts extends AbstractFlowFacts<String>  {
     	
     	//System.out.println("owner: " + id + " " + owner);
     	if(id.name.toString().equals("this")){
-    		//System.out.println("in" + id.sym); 
+    		//System.out.println("in" + id.sym + " " + this); 
     		//return COMMITTED;
-    		return receiverType(id.sym.owner);
+    		return receiverType();
     	}
     	int ff = checkInFlowFacts(owner, id.toString());
     	//System.out.println(ff);
@@ -297,9 +339,41 @@ public class ImmutabilityFlowFacts extends AbstractFlowFacts<String>  {
     } 
     
     //A method returns an immutable object if it is not declared mutable
-    //TODO fix me like immtype
     public int initType(JCMethodInvocation mi ){
-    	return initType(mi.getMethodSelect());
+    	//return initType(mi.getMethodSelect());
+    	
+    	if(mi.meth.toString().equals("super") || mi.meth.toString().equals("this")){
+    		//System.out.println("mi: " + mi + " " + this);
+    		return COMMITTED;
+    	}
+    	JCTree sel = mi.getMethodSelect();
+    	Symbol s = null;
+    	Name name = null;
+    	if(sel instanceof JCFieldAccess){
+    		s = ((JCFieldAccess)sel).sym.owner;
+    		name = ((JCFieldAccess)sel).name;
+    	}
+    	else if(sel instanceof JCIdent){
+    		s = ((JCIdent)sel).sym.owner;
+    		name = ((JCIdent)sel).name;
+    	}
+    	
+    	for(Symbol t : s.enclClass().getEnclosedElements()){
+    		if(t instanceof MethodSymbol){
+    			MethodSymbol ms = (MethodSymbol)t;
+    			if(ms.name.toString().equals(name.toString())){
+    				if(hasAnnotation(ms.getAnnotationMirrors(),("Free")))
+    					return FREE;
+    				else if(hasAnnotation(ms.getAnnotationMirrors(),("Unclassified")))
+    					return UNCLASSIFIED;
+    				else
+    					return COMMITTED;
+    			}
+    		}
+    	}
+    	System.out.println("Shouldn't be reached. (inittype)");
+    	return COMMITTED;
+    	
     }
     
     //If all actual parameters are non-committed, return committed
@@ -314,7 +388,7 @@ public class ImmutabilityFlowFacts extends AbstractFlowFacts<String>  {
     	return COMMITTED;
     }
     
-    public int initType(Symbol s ){
+    public int initType(Symbol s){
     	int ff = checkInFlowFacts(s.owner, s.name.toString());
     	if(ff != 0)
     		return ff;
@@ -328,6 +402,7 @@ public class ImmutabilityFlowFacts extends AbstractFlowFacts<String>  {
     
     public int initType(JCTree t ){
     	int ret = COMMITTED;
+    	//System.out.println("init: " + t + " " + t.getClass() + " " + this);
     	if(t instanceof JCFieldAccess)
     		ret = initType((JCFieldAccess)t);
     	else if(t instanceof JCIdent)
@@ -337,16 +412,37 @@ public class ImmutabilityFlowFacts extends AbstractFlowFacts<String>  {
     	else if(t instanceof JCNewClass)
     		ret = initType((JCNewClass)t );
     	else if(t instanceof JCConditional){
-    		JCConditional c = (JCConditional)t;//TODO PICK UP HERE
+    		JCConditional c = (JCConditional)t;
     		int fval = initType(c.getFalseExpression());
     		int tval = initType(c.getTrueExpression());
-    		System.out.println("COND: " + fval + " " + tval);
-    		if(fval != tval)
+    		//System.out.println("COND: " + fval + " " + tval);
+    		if(!initCheck(fval,tval) && !initCheck(tval,fval))
     			return -1;
-    		ret = fval;
+    		if(fval == EITHER || tval == EITHER)
+    			ret =  EITHER;
+    		else
+    			ret = fval;
+    	}
+    	else if(t instanceof JCBinary){
+    		JCBinary b = (JCBinary)t;
+    		int lval = initType(b.lhs);
+    		int rval = initType(b.rhs);
+    		//System.out.println("COND: " + fval + " " + tval);
+    		if(!initCheck(lval,rval) && !initCheck(rval,lval))
+    			return -1;
+    		if(lval == EITHER || rval == EITHER)
+    			ret =  EITHER;
+    		else
+    			ret = lval;
+    	}
+    	else if(t instanceof JCParens){
+    		ret = initType(((JCParens)t).expr);
+    	}
+    	else if(t instanceof JCTypeCast){
+    		ret = initType(((JCTypeCast)t).expr);
     	}
     	else if(t instanceof LiteralTree)
-    		ret = COMMITTED;
+    		ret = EITHER;
     	else
     		System.out.println("Unhandled case in initType: " + t + " " + t.getClass());
     	return ret;
@@ -366,11 +462,11 @@ public class ImmutabilityFlowFacts extends AbstractFlowFacts<String>  {
     /*-----------------*/
     
     public boolean is_mutator(JCMethodInvocation mi ){
-    	//not dealing with super(), but shouldn't matter since it will be called in a constructor,
+    	//not dealing with super() or this(), but shouldn't matter since it will be called in a constructor,
     	//where mutation is OK.
-    	if(mi.meth.toString().equals("super"))
+    	if(mi.meth.toString().equals("super") || mi.meth.toString().equals("this"))
     		return false;
-    	
+    	//System.out.println(mi + " " + mi.getClass() );
     	JCTree sel = mi.getMethodSelect();
     	Symbol s = null;
     	Name name = null;
@@ -428,7 +524,7 @@ public class ImmutabilityFlowFacts extends AbstractFlowFacts<String>  {
 			String lhsFieldName = getThisFieldNameOrNull(lhs);
 			String rhsFieldName = getThisFieldNameOrNull(TreeInfo.skipParens(rhs));
 			//System.out.println(lhsFieldName + " " + rhsFieldName );
-			if (lhsFieldName != null || rhsFieldName != null) {
+			if (lhsFieldName != null){// || rhsFieldName != null) {
 				return true;
 			}
     	}
@@ -471,8 +567,21 @@ public class ImmutabilityFlowFacts extends AbstractFlowFacts<String>  {
 	    	return true;
 	    }
 	}
+	
+	public boolean receiver_init_check(JCMethodInvocation mi){
+	    //System.out.println("MUT: " + this + mi.getMethodSelect() + " " +initType(mi) + " " + initType(mi.getMethodSelect()));
+	    return initCheck(initType(mi),initType(mi.getMethodSelect()));
+	}
 
-
+	/*--------------*/
+	/* Conditionals */
+	/*--------------*/
+	
+	public boolean check_conditional(JCConditional c){
+	    return initType(c.getFalseExpression()) == initType(c.getTrueExpression())
+	    		&& immType(c.getFalseExpression()) == immType(c.getTrueExpression());
+	}
+	
     /*-------------------*/
     /* Flowfacts Methods */
     /*-------------------*/
@@ -508,12 +617,15 @@ public class ImmutabilityFlowFacts extends AbstractFlowFacts<String>  {
         return null;
     }
 
+    
     //No clue how to properly tell what type of method I'm in without env, so I'm just checking to see
     //  if either (1) super(..) is called, or (2) this(..) is called.
     //  If either is called, I'm in a constructor(?), and I indicate "this" is free in my flowfacts
-    //Still have no idea how to tell I'm in a free method.
-    //In other words, this is a hack.
+    //"Tricky" code to detect the init type of a receiver in a method.
     public FlowFacts genSet(JCTree tree){
+    	
+    		
+    	
     	if(TreeInfo.symbol(tree)!=null){
     		//System.out.println(tree + " " + TreeInfo.symbol(tree).owner + " " + TreeInfo.symbol(tree).owner.getClass());
     		Symbol s = TreeInfo.symbol(tree).owner;
@@ -523,13 +635,42 @@ public class ImmutabilityFlowFacts extends AbstractFlowFacts<String>  {
     		}
     	}
     	ImmutabilityFlowFacts gen = this;//new ImmutabilityFlowFacts();
-    	System.out.println("GENSET: " +gen + " "  + tree.getClass() +" " +  tree);
+    	
+    	
+    	//System.out.println("GENSET: " +gen + " "  + tree.getClass() +" " +  tree + " "   );
     	if(tree instanceof JCMethodInvocation){
     		JCMethodInvocation a = (JCMethodInvocation)tree;
     		//System.out.println(a.meth);
     		if(a.meth.toString().equals("super") || a.meth.toString().equals("this")){
+    			//System.out.println("AAAA");
     			gen.add(FREE +"this");
     		}
+    	}
+    	if(justBeenSet != null){
+    		if(justBeenSet.equals("FreeM"))
+    			gen.add(FREE+"this");
+    		if(justBeenSet.equals("UnclassifiedM"))
+    			gen.add(UNCLASSIFIED+"this");
+    		justBeenSet = null;
+    	}
+    	
+    	
+    	if(!gen.contains(COMMITTED+"this"))
+			gen.add(COMMITTED +"this");
+    	if(tree instanceof JCAnnotation){
+    		JCAnnotation a = (JCAnnotation)tree;
+    		//System.out.println("ANNOT: " + a.annotationType);
+    		if(a.annotationType.toString().equals("FreeM")){
+    			//System.out.println("MAD OIT");
+    			gen.add(FREE +"this");
+    			justBeenSet=a.annotationType.toString();
+    		}
+    		 
+    		else if(a.annotationType.toString().equals("UnclassifiedM")){
+    			gen.add(UNCLASSIFIED +"this");
+    			justBeenSet=a.annotationType.toString();
+    		}
+    		
     	}
     	
     	if (tree instanceof JCAssign){
@@ -583,15 +724,12 @@ public class ImmutabilityFlowFacts extends AbstractFlowFacts<String>  {
     	return false;
     }
 
-    // nothing kills a definite assignment
     public FlowFacts killSet(JCTree tree){ return new ImmutabilityFlowFacts(); }
 
-	
-    
     
     // we don't need path sensitivity
     public boolean condDistinguished(JCTree tree){
-	return false;
+    	return false;
     }
 	
     // these are never used by our analysis, since it is not path-sensitive
@@ -599,35 +737,4 @@ public class ImmutabilityFlowFacts extends AbstractFlowFacts<String>  {
     public FlowFacts genSetFalse(JCTree tree) { return null; }
     public FlowFacts killSetTrue(JCTree tree) { return null; }
     public FlowFacts killSetFalse(JCTree tree) { return null; }
-}
-
-class InitPair{
-	//need to change from String I think.
-	JCTree tree;
-	int init;
-	String name = ""; 
-	
-	public InitPair(String t, int i){
-		name = t;
-		init = i;
-	}
-	
-	public InitPair(JCTree t, int i, String s){
-		tree = t;
-		init = i;
-		name = s;
-	}
-	
-	public String toString(){
-		if(init == ImmutabilityFlowFacts.FREE)
-			return "@F " + name;
-		else if(init == ImmutabilityFlowFacts.COMMITTED)
-			return "@C " + name;
-		else
-			return "@U " + name;
-	}
-	
-	public boolean equals(InitPair other){
-		return name.equals(other.name);
-	}
 }
