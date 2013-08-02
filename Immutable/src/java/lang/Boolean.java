@@ -235,7 +235,7 @@ public final class Boolean implements java.io.Serializable,
      * @see     java.lang.System#getProperty(java.lang.String, java.lang.String)
      */
     
-    /* Regular
+    /* Regular*//*
     public static boolean getBoolean(String name) {
         boolean result = false;
         try {
@@ -246,6 +246,16 @@ public final class Boolean implements java.io.Serializable,
         return result;
     }
     */
+    
+    public static boolean getBoolean(String name) {
+        boolean result = false;
+        try {
+            result = toBoolean(System.getProperty(name));
+        } catch (IllegalArgumentException e) {
+        } catch (NullPointerException e) {
+        }
+        return result;
+    }
     
     /* Option 1
     @Mutable public static boolean getBoolean(@Mutable String name) {
@@ -259,7 +269,7 @@ public final class Boolean implements java.io.Serializable,
     }
     */
 
-    /* OPTION 2*/
+    /* OPTION 2*//*
     public static boolean getBoolean(String name) {
         //boolean result = false;
         try {
@@ -269,7 +279,7 @@ public final class Boolean implements java.io.Serializable,
         }
         return false;
     }
-    
+    */
     /**
      * Compares this {@code Boolean} instance with another.
      *

@@ -17,7 +17,7 @@ public class MutatesReceiver{
 	@Mutable int x;
 	MutatesReceiver field, field2;
 	
-	@Mutates public void setField(){
+	@Unclassified @Mutates public void setField(){
 		setField2();
 	}
 	

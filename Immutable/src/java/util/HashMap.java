@@ -24,7 +24,10 @@
  */
 
 package java.util;
-import java.io.*;
+import java.io.IOException;
+import java.io.Serializable;
+
+import javacop.annotations.Mutable;
 
 /**
  * Hash table based implementation of the <tt>Map</tt> interface.  This
@@ -407,7 +410,7 @@ public class HashMap<K,V>
      * Offloaded version of put for null keys
      */
     private V putForNullKey(V value) {
-        for (Entry<K,V> e = table[0]; e != null; e = e.next) {
+        for (@Mutable Entry<K,V> e = table[0]; e != null; e = e.next) {
             if (e.key == null) {
                 V oldValue = e.value;
                 e.value = value;

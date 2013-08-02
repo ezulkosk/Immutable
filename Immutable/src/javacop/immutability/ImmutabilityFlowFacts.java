@@ -25,6 +25,7 @@ import com.sun.tools.javac.comp.Env;
 import com.sun.tools.javac.comp.FlowFacts;
 import com.sun.tools.javac.tree.JCTree;
 import com.sun.tools.javac.tree.JCTree.JCAnnotation;
+import com.sun.tools.javac.tree.JCTree.JCArrayAccess;
 import com.sun.tools.javac.tree.JCTree.JCAssign;
 import com.sun.tools.javac.tree.JCTree.JCBinary;
 import com.sun.tools.javac.tree.JCTree.JCBlock;
@@ -36,10 +37,12 @@ import com.sun.tools.javac.tree.JCTree.JCIdent;
 import com.sun.tools.javac.tree.JCTree.JCMethodDecl;
 import com.sun.tools.javac.tree.JCTree.JCMethodInvocation;
 import com.sun.tools.javac.tree.JCTree.JCModifiers;
+import com.sun.tools.javac.tree.JCTree.JCNewArray;
 import com.sun.tools.javac.tree.JCTree.JCNewClass;
 import com.sun.tools.javac.tree.JCTree.JCParens;
 import com.sun.tools.javac.tree.JCTree.JCStatement;
 import com.sun.tools.javac.tree.JCTree.JCTypeCast;
+import com.sun.tools.javac.tree.JCTree.JCUnary;
 import com.sun.tools.javac.tree.JCTree.JCVariableDecl;
 import com.sun.tools.javac.tree.TreeInfo;
 import com.sun.tools.javac.util.Name;
@@ -113,14 +116,14 @@ public class ImmutabilityFlowFacts extends AbstractFlowFacts<String>  {
     /*--------------------*/
     
     public boolean assign_to_committed_immutable_check(int init, int imm){
-    	return init == FREE || init == UNDEFINED || imm == MUTABLE; 
+    	return init == FREE || init == UNDEFINED || init == EITHER || imm == EITHER || imm == MUTABLE; 
     }
     
     //ensure we're not putting an immutable in a mutable or vice versa, 
     //Note: EITHER only occurs on return from a constructor
     public boolean mutabilityCheck(int l, int r){
     	//System.out.println(l + " " + r);
-    	return(l == r || r == EITHER);
+    	return(l == r || r == EITHER || l == EITHER);
     }
     
     
@@ -142,6 +145,11 @@ public class ImmutabilityFlowFacts extends AbstractFlowFacts<String>  {
     public int immType(JCIdent id){
     	
     	Symbol s = id.sym;
+    	//System.out.println("ID: " + id + " " + id.type +  " " + id.type.isPrimitive() + " " + id.sym.isLocal());
+    	if(id.type.isPrimitive() && s.isLocal()){
+    		//System.out.println("in");
+    		return EITHER;
+    	}
     	//System.out.println(id+ "  " + s.getAnnotationMirrors());
     	if(!hasAnnotation(s.getAnnotationMirrors(),"Mutable"))
     		return IMMUTABLE;
@@ -158,6 +166,8 @@ public class ImmutabilityFlowFacts extends AbstractFlowFacts<String>  {
     
     //A method returns an immutable object if it is not declared mutable
     public int immType(JCMethodInvocation mi){
+    	if(mi.type.isPrimitive())
+    		return EITHER;
     	JCTree sel = mi.getMethodSelect();
     	Symbol s = null;
     	Name name = null;
@@ -196,6 +206,17 @@ public class ImmutabilityFlowFacts extends AbstractFlowFacts<String>  {
     	return IMMUTABLE;
     }
     
+    public int immType(JCArrayAccess as ){
+    	//System.out.println(as);
+    	return IMMUTABLE;
+    	
+    }
+    
+    public int immType(JCNewArray as ){
+    	//System.out.println(as);
+    	return IMMUTABLE;
+    	
+    }
     // Probably should use the visitor pattern, but seems like overkill for now.
     public int immType(JCTree t ){
     	//System.out.println(t +  " " + t.getClass());
@@ -208,8 +229,12 @@ public class ImmutabilityFlowFacts extends AbstractFlowFacts<String>  {
     		ret = immType((JCMethodInvocation)t);
     	else if(t instanceof JCNewClass)
     		ret = immType((JCNewClass)t );
-    	else if(t instanceof LiteralTree)
+    	else if(t instanceof LiteralTree || t instanceof JCUnary)
     		ret = EITHER;
+    	else if(t instanceof JCArrayAccess)
+    		ret = immType((JCArrayAccess)t);
+    	else if(t instanceof JCNewArray)
+    		ret = immType((JCNewArray)t);
     	else if(t instanceof JCConditional){
     		JCConditional c = (JCConditional)t;
     		int fval = immType(c.getFalseExpression());
@@ -277,7 +302,7 @@ public class ImmutabilityFlowFacts extends AbstractFlowFacts<String>  {
     public boolean initCheck(int l, int r){
     	//System.out.println(l + " " + r);
     	//System.out.println(currLeft);
-    	return l == UNCLASSIFIED || l == UNDEFINED || r == EITHER || l == r;
+    	return l == UNCLASSIFIED || l == UNDEFINED || l == EITHER || r == EITHER || l == r || r == UNDEFINED;
     }
     
     public int initType(JCFieldAccess fa){
@@ -290,7 +315,13 @@ public class ImmutabilityFlowFacts extends AbstractFlowFacts<String>  {
     	else
     		return init;
     }
-   
+   /*
+    owner: java.lang.String value [6count, 6hash, 4this, 6offset, 6value, 3this]
+	INIT: value 6
+	owner: copyOf(char[],int) arg0 [6count, 6hash, 4this, 6offset, 6value, 3this]
+	INIT: arg0 0
+	owner: String(char[]) value [6count, 6hash, 4this, 6offset, 6value, 3this]
+   */
     
     public int checkInFlowFacts(Symbol owner, String id){
     	//System.out.println("owner: " + owner + " " + id + " " + this);
@@ -324,6 +355,8 @@ public class ImmutabilityFlowFacts extends AbstractFlowFacts<String>  {
     	//System.out.println(id);
     	//System.out.println("ID: " + id + " " + this.genSet(id) + " " + id.sym.owner.getClass());// + this.contains(new InitPair(id.toString(),1)));
     	Symbol owner = id.sym.owner;
+    	if(id.type.isPrimitive() && id.sym.isLocal())
+    		return EITHER;
     	
     	//System.out.println("owner: " + id + " " + owner);
     	if(id.name.toString().equals("this")){
@@ -341,7 +374,8 @@ public class ImmutabilityFlowFacts extends AbstractFlowFacts<String>  {
     //A method returns an immutable object if it is not declared mutable
     public int initType(JCMethodInvocation mi ){
     	//return initType(mi.getMethodSelect());
-    	
+    	if(mi.type.isPrimitive())
+    		return EITHER;
     	if(mi.meth.toString().equals("super") || mi.meth.toString().equals("this")){
     		//System.out.println("mi: " + mi + " " + this);
     		return COMMITTED;
@@ -381,7 +415,7 @@ public class ImmutabilityFlowFacts extends AbstractFlowFacts<String>  {
     public int initType(JCNewClass nc){
     	for(JCExpression e : nc.args){
     		int init = initType(e);
-    		if(init != COMMITTED){
+    		if(init != COMMITTED && init != EITHER){
     			return FREE;
     		}
     	}
@@ -390,6 +424,7 @@ public class ImmutabilityFlowFacts extends AbstractFlowFacts<String>  {
     
     public int initType(Symbol s){
     	int ff = checkInFlowFacts(s.owner, s.name.toString());
+    	//System.out.println("INIT: " + s.name + " " + ff);
     	if(ff != 0)
     		return ff;
     	if(hasAnnotation(s.getAnnotationMirrors(),"Free"))
@@ -398,6 +433,16 @@ public class ImmutabilityFlowFacts extends AbstractFlowFacts<String>  {
     		return UNCLASSIFIED;
     	else
     		return COMMITTED;
+    }
+    
+    public int initType(JCArrayAccess as){
+    	//System.out.println(as);
+    	return COMMITTED;
+    }
+    
+    public int initType(JCNewArray as){
+    	//System.out.println(as);
+    	return COMMITTED;
     }
     
     public int initType(JCTree t ){
@@ -411,6 +456,10 @@ public class ImmutabilityFlowFacts extends AbstractFlowFacts<String>  {
     		ret = initType((JCMethodInvocation)t );
     	else if(t instanceof JCNewClass)
     		ret = initType((JCNewClass)t );
+    	else if(t instanceof JCArrayAccess)
+    		ret = initType((JCArrayAccess)t);
+    	else if(t instanceof JCNewArray)
+    		ret = initType((JCNewArray)t);
     	else if(t instanceof JCConditional){
     		JCConditional c = (JCConditional)t;
     		int fval = initType(c.getFalseExpression());
@@ -441,7 +490,7 @@ public class ImmutabilityFlowFacts extends AbstractFlowFacts<String>  {
     	else if(t instanceof JCTypeCast){
     		ret = initType(((JCTypeCast)t).expr);
     	}
-    	else if(t instanceof LiteralTree)
+    	else if(t instanceof LiteralTree || t instanceof JCUnary)
     		ret = EITHER;
     	else
     		System.out.println("Unhandled case in initType: " + t + " " + t.getClass());
@@ -499,6 +548,8 @@ public class ImmutabilityFlowFacts extends AbstractFlowFacts<String>  {
     
     
     public boolean assignsField(JCBlock body){
+    	if(body == null)
+    		return false;
     	for(JCStatement s : body.getStatements()){
     		//System.out.println(s + " " + s.getClass());
     		JCTree lhs=null, rhs=null;
@@ -509,20 +560,26 @@ public class ImmutabilityFlowFacts extends AbstractFlowFacts<String>  {
     				lhs = TreeInfo.skipParens(a.lhs);
     				rhs = TreeInfo.skipParens(a.rhs);
     			}
+    			else if(e.expr instanceof JCUnary)
+    				lhs = ((JCUnary)e.expr).arg;
     			else
     				continue;
     		}
     		else if(s instanceof JCVariableDecl){
     			JCVariableDecl e = (JCVariableDecl)s;
     			lhs = null;
+    			if(rhs == null)
+    				return false;
     			rhs = TreeInfo.skipParens(e.init);
     		}
     		else
     			continue;
+    		String rhsFieldName = "";
     		if(rhs!=null && lhs!= null);
     			//System.out.println("assigns: " + s + " "+ initType(lhs) + "  " + initType(rhs));
 			String lhsFieldName = getThisFieldNameOrNull(lhs);
-			String rhsFieldName = getThisFieldNameOrNull(TreeInfo.skipParens(rhs));
+			if(rhs != null)
+				rhsFieldName = getThisFieldNameOrNull(TreeInfo.skipParens(rhs));
 			//System.out.println(lhsFieldName + " " + rhsFieldName );
 			if (lhsFieldName != null){// || rhsFieldName != null) {
 				return true;
@@ -578,8 +635,12 @@ public class ImmutabilityFlowFacts extends AbstractFlowFacts<String>  {
 	/*--------------*/
 	
 	public boolean check_conditional(JCConditional c){
-	    return initType(c.getFalseExpression()) == initType(c.getTrueExpression())
-	    		&& immType(c.getFalseExpression()) == immType(c.getTrueExpression());
+	    return (initType(c.getFalseExpression()) == initType(c.getTrueExpression()) 
+	    		|| initType(c.getFalseExpression()) == EITHER 
+	    		|| initType(c.getTrueExpression()) == EITHER)
+	    		&& (immType(c.getFalseExpression()) == immType(c.getTrueExpression())
+	    		|| immType(c.getFalseExpression()) == EITHER
+	    		|| immType(c.getTrueExpression()) == EITHER);
 	}
 	
     /*-------------------*/
@@ -642,13 +703,16 @@ public class ImmutabilityFlowFacts extends AbstractFlowFacts<String>  {
     		JCMethodInvocation a = (JCMethodInvocation)tree;
     		//System.out.println(a.meth);
     		if(a.meth.toString().equals("super") || a.meth.toString().equals("this")){
-    			//System.out.println("AAAA");
+    			//System.out.println("AAAA" + gen);
+    			
     			gen.add(FREE +"this");
     		}
     	}
     	if(justBeenSet != null){
-    		if(justBeenSet.equals("FreeM"))
+    		//System.out.println("IN" + justBeenSet);
+    		if(justBeenSet.equals("FreeM")){
     			gen.add(FREE+"this");
+    		}
     		if(justBeenSet.equals("UnclassifiedM"))
     			gen.add(UNCLASSIFIED+"this");
     		justBeenSet = null;
@@ -662,12 +726,12 @@ public class ImmutabilityFlowFacts extends AbstractFlowFacts<String>  {
     		//System.out.println("ANNOT: " + a.annotationType);
     		if(a.annotationType.toString().equals("FreeM")){
     			//System.out.println("MAD OIT");
-    			gen.add(FREE +"this");
+    			//gen.add(FREE +"this");
     			justBeenSet=a.annotationType.toString();
     		}
     		 
     		else if(a.annotationType.toString().equals("UnclassifiedM")){
-    			gen.add(UNCLASSIFIED +"this");
+    			//gen.add(UNCLASSIFIED +"this");
     			justBeenSet=a.annotationType.toString();
     		}
     		

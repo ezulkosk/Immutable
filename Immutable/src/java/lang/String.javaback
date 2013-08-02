@@ -25,18 +25,19 @@
 
 package java.lang;
 
-import java.io.ObjectStreamClass;
 import java.io.ObjectStreamField;
 import java.io.UnsupportedEncodingException;
 import java.nio.charset.Charset;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
 import java.util.Formatter;
+import java.util.IllegalFormatException;
 import java.util.Locale;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.regex.PatternSyntaxException;
+
+import javacop.annotations.FreeM;
 
 
 /**
@@ -400,7 +401,7 @@ public final class String
      * and requested offset & length values used by the String(byte[],..)
      * constructors.
      */
-    private static void checkBounds(byte[] bytes, int offset, int length) {
+    @FreeM private static void checkBounds(byte[] bytes, int offset, int length) {
         if (length < 0)
             throw new StringIndexOutOfBoundsException(length);
         if (offset < 0)
@@ -646,7 +647,7 @@ public final class String
         this.offset = offset;
         this.count = count;
     }
-
+    
     /**
      * Returns the length of this string.
      * The length is equal to the number of <a href="Character.html#unicode">Unicode
