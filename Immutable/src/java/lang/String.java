@@ -401,7 +401,7 @@ public final class String
      * and requested offset & length values used by the String(byte[],..)
      * constructors.
      */
-    @FreeM private static void checkBounds(byte[] bytes, int offset, int length) {
+     private static void checkBounds(byte[] bytes, int offset, int length) {
         if (length < 0)
             throw new StringIndexOutOfBoundsException(length);
         if (offset < 0)

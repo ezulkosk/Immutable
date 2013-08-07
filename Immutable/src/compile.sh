@@ -2,6 +2,8 @@
 JCOPJAR=../lib/JavaCop.jar 
 export JCOPJAR
 
+# We assume jcopc and javacop are on path.
+
 jcopc javacop/immutability/ImmutabilityRules
 jar cf ImmutabilityRules.jar javacop
 
@@ -25,7 +27,7 @@ jar cf ImmutabilityRules.jar javacop
 #javacop -jcp ImmutabilityRules.jar javacop.immutability.ImmutabilityRules test/MutatesReceiver.java
 
 #javacop -jcp ImmutabilityRules.jar javacop.immutability.ImmutabilityRules java/lang/Boolean.java
-#javacop -jcp ImmutabilityRules.jar javacop.immutability.ImmutabilityRules java/lang/String.java
-javacop -jcp ImmutabilityRules.jar javacop.immutability.ImmutabilityRules java/util/HashMap.java
+javacop -jcp ImmutabilityRules.jar javacop.immutability.ImmutabilityRules java/lang/String.java
+#javacop -jcp ImmutabilityRules.jar javacop.immutability.ImmutabilityRules java/util/HashMap.java
 
 #javacop -jcp ImmutabilityRules.jar javacop.immutability.ImmutabilityRules kodkod/ast/*.java

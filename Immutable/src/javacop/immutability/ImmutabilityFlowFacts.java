@@ -302,12 +302,15 @@ public class ImmutabilityFlowFacts extends AbstractFlowFacts<String>  {
     public boolean initCheck(int l, int r){
     	//System.out.println(l + " " + r);
     	//System.out.println(currLeft);
-    	return l == UNCLASSIFIED || l == UNDEFINED || l == EITHER || r == EITHER || l == r || r == UNDEFINED;
+    	return l == UNCLASSIFIED || l == UNDEFINED || l == EITHER || r == EITHER || l == r; //|| r == UNDEFINED;
     }
     
     public int initType(JCFieldAccess fa){
-    	//System.out.println("FA " + fa  + " " + initType(fa.selected) + " " + this);
+    	
     	int init = initType(fa.selected);
+    	//System.out.println("FA " + fa  + " " + initType(fa.selected) + this );
+    	if(init == FREE && fa.selected.toString().equals("this") && this.contains(COMMITTED + fa.name.toString()))
+    		return COMMITTED;
     	if(init == FREE && fa.selected.toString().equals("this"))
     		return FREE;
     	if(init == FREE)
@@ -365,7 +368,7 @@ public class ImmutabilityFlowFacts extends AbstractFlowFacts<String>  {
     		return receiverType();
     	}
     	int ff = checkInFlowFacts(owner, id.toString());
-    	//System.out.println(ff);
+    	//System.out.println(id  + " " + ff + " " + this);
     	if(ff != 0 )
     		return ff;
     	return initType(id.sym);
@@ -373,6 +376,7 @@ public class ImmutabilityFlowFacts extends AbstractFlowFacts<String>  {
     
     //A method returns an immutable object if it is not declared mutable
     public int initType(JCMethodInvocation mi ){
+    	//System.out.println("MI: " + mi + " " + mi.type + " " + mi.args);
     	//return initType(mi.getMethodSelect());
     	if(mi.type.isPrimitive())
     		return EITHER;
@@ -494,6 +498,7 @@ public class ImmutabilityFlowFacts extends AbstractFlowFacts<String>  {
     		ret = EITHER;
     	else
     		System.out.println("Unhandled case in initType: " + t + " " + t.getClass());
+    	//System.out.println(t + " " + ret);
     	return ret;
     }
     
@@ -504,8 +509,8 @@ public class ImmutabilityFlowFacts extends AbstractFlowFacts<String>  {
     public boolean hasBeenInitialized(String s){
     	return true;//contains(s);
     }
-   
     
+  
     /*-----------------*/
     /* Mutator Checker */
     /*-----------------*/
@@ -738,13 +743,13 @@ public class ImmutabilityFlowFacts extends AbstractFlowFacts<String>  {
     	}
     	
     	if (tree instanceof JCAssign){
-        	//System.out.println(this + " " + tree);
+        	//System.out.println(this + " " + tree + " " +initType(((JCAssign)tree).rhs));
         	JCAssign a = ((JCAssign)tree);
         	JCTree lhs = TreeInfo.skipParens(a.lhs);
         	String fieldName = getThisFieldNameOrNull(lhs);
         	if (fieldName != null) {
         		//System.out.println("Adding an assigned field " + fieldName + " to the set."+ initType(lhs) + " " + initType(a.rhs)); 
-        		if(initType(lhs) == UNDEFINED)
+        		if(initType(lhs) == UNDEFINED || initType(lhs)==FREE)
         			if(initType(a.rhs) == 4)
         				gen.add("4" + fieldName);
         			else if(initType(a.rhs)==5)

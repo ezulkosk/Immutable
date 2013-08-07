@@ -27,7 +27,7 @@ package java.util;
 import java.io.IOException;
 import java.io.Serializable;
 
-import javacop.annotations.Mutable;
+import javacop.annotations.Mutates;
 
 /**
  * Hash table based implementation of the <tt>Map</tt> interface.  This
@@ -409,8 +409,8 @@ public class HashMap<K,V>
     /**
      * Offloaded version of put for null keys
      */
-    private V putForNullKey(V value) {
-        for (@Mutable Entry<K,V> e = table[0]; e != null; e = e.next) {
+     private V putForNullKey(V value) {
+        for (Entry<K,V> e = table[0]; e != null; e = e.next) {
             if (e.key == null) {
                 V oldValue = e.value;
                 e.value = value;
@@ -628,7 +628,7 @@ public class HashMap<K,V>
      * Removes all of the mappings from this map.
      * The map will be empty after this call returns.
      */
-    public void clear() {
+     public void clear() {
         modCount++;
         Entry[] tab = table;
         for (int i = 0; i < tab.length; i++)

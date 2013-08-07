@@ -180,6 +180,7 @@ rule receiver_init_check(JCMethodInvocation mi){
 }
 
 
+
 /*--------------*/
 /* Conditionals */
 /*--------------*/

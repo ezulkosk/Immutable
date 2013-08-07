@@ -25,7 +25,7 @@
 
 package java.lang;
 
-import javacop.annotations.Mutable;
+import java.util.HashMap;
 
 /**
  * The Boolean class wraps a value of the primitive type
@@ -87,6 +87,7 @@ public final class Boolean implements java.io.Serializable,
      */
     public Boolean(boolean value) {
         this.value = value;
+     
     }
 
     /**
